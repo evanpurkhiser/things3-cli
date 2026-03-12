@@ -3,24 +3,26 @@
 things-cli: A command-line interface for Things 3 via the Things Cloud API.
 
 Usage:
-    python cli.py today
-    python cli.py anytime
-    python cli.py inbox
-    python cli.py projects
-    python cli.py areas
-    python cli.py tags
-    python cli.py mark <task-id> --done|--incomplete|--canceled
+    things3 set-auth
+    things3 today
+    things3 anytime
+    things3 inbox
+    things3 projects
+    things3 areas
+    things3 tags
+    things3 mark <task-id> --done|--incomplete|--canceled
 
-Requires config.py with EMAIL and PASSWORD set.
 """
 
 import argparse
+import getpass
 import sys
 from datetime import datetime, timezone
 from typing import Optional
 
-from config import EMAIL, PASSWORD
 from things_cloud.client import ThingsCloudClient
+from things_cloud.auth import AuthConfigError, load_auth, write_auth
+from things_cloud.log_cache import get_state_with_append_log
 from things_cloud.store import ThingsStore, Task, Area, Tag
 
 RECURRENCE_FIXED_SCHEDULE = 0
@@ -480,7 +482,7 @@ def cmd_mark(store: ThingsStore, args, client: ThingsCloudClient):
     """Mark one task by UUID (or unique UUID prefix)."""
     if not args.task_id:
         print(
-            "Usage: python cli.py mark <task-id> --done|--incomplete|--canceled",
+            "Usage: things3 mark <task-id> --done|--incomplete|--canceled",
             file=sys.stderr,
         )
         return
@@ -550,7 +552,24 @@ def cmd_mark(store: ThingsStore, args, client: ThingsCloudClient):
     print(colored(label, GREEN), f"{task.title}  {colored(task.uuid, DIM)}")
 
 
+def cmd_set_auth(_args):
+    """Interactively configure Things Cloud credentials."""
+    print("Configure Things Cloud authentication")
+    email = input("Email: ").strip()
+    password = getpass.getpass("Password: ")
+
+    try:
+        path = write_auth(email, password)
+    except AuthConfigError as e:
+        print(f"Failed to write auth config: {e}", file=sys.stderr)
+        return 1
+
+    print(colored("✓ Auth saved", GREEN), colored(str(path), DIM))
+    return 0
+
+
 COMMANDS = {
+    "set-auth": cmd_set_auth,
     "today": cmd_today,
     "anytime": cmd_anytime,
     "inbox": cmd_inbox,
@@ -569,7 +588,7 @@ COMMANDS = {
 
 def main():
     parser = argparse.ArgumentParser(
-        description="things-cli: Command-line interface for Things 3 via Cloud API",
+        description="things3: Command-line interface for Things 3 via Cloud API",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="\n".join(f"  {cmd}" for cmd in COMMANDS),
     )
@@ -606,15 +625,27 @@ def main():
 
     args = parser.parse_args()
 
+    if args.command == "set-auth":
+        rc = COMMANDS[args.command](args)
+        if rc:
+            sys.exit(rc)
+        return
+
     # Disable colors if requested or if stdout is not a tty
     if args.no_color or not sys.stdout.isatty():
         global RESET, BOLD, DIM, CYAN, YELLOW, GREEN, BLUE, MAGENTA, RED
         RESET = BOLD = DIM = CYAN = YELLOW = GREEN = BLUE = MAGENTA = RED = ""
 
     # Fetch data
-    client = ThingsCloudClient(EMAIL, PASSWORD)
     try:
-        raw = client.get_all_items()
+        email, password = load_auth()
+    except AuthConfigError as e:
+        print(str(e), file=sys.stderr)
+        sys.exit(1)
+
+    client = ThingsCloudClient(email, password)
+    try:
+        raw = get_state_with_append_log(client)
     except Exception as e:
         print(f"Error fetching data: {e}", file=sys.stderr)
         sys.exit(1)

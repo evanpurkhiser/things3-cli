@@ -1,28 +1,34 @@
-# things-cli
+# things3
 
-A small Things CLI client backed by Things Cloud.
+A small Things 3 CLI client backed by Things Cloud.
 
 ## Features
 
 - Show `today`, `inbox`, `projects`, `areas`, `tags`, and `upcoming`
 - Mark task status with `mark --done|--incomplete|--canceled`
 - Uses cloud history replay (`t=0/1/2`) for current state
+- Maintains a local append-only history cache in XDG state (`$XDG_STATE_HOME/things3/append-log`)
 
 ## Quick Start
 
-Create a `config.py` file:
-
-```python
-EMAIL = "you@example.com"
-PASSWORD = "app-password-or-things-password"
-```
-
-Run commands with `uv`:
+Set auth interactively:
 
 ```bash
-uv run cli.py today
-uv run cli.py inbox
-uv run cli.py mark <task-id> --done
+things3 set-auth
+```
+
+Run commands:
+
+```bash
+things3 today
+things3 inbox
+things3 mark <task-id> --done
+```
+
+Install as a `uv` tool:
+
+```bash
+uv tool install .
 ```
 
 ## Dev

@@ -1,5 +1,8 @@
-config.py
 __pycache__/
 .ruff_cache/
 *.pyc
 .venv/
+.cache/
+build/
+dist/
+*.egg-info/
