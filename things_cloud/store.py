@@ -65,6 +65,7 @@ class Task:
     notes: Optional[str] = None
     project: Optional[str] = None  # UUID
     area: Optional[str] = None  # UUID
+    action_group: Optional[str] = None  # agr: heading/group UUID
     tags: list[str] = field(default_factory=list)  # UUIDs
     trashed: bool = False
     deadline: Optional[datetime] = None
@@ -192,6 +193,7 @@ class ThingsStore:
         # project and area are lists in the wire format
         project_list = p.get("pr") or []
         area_list = p.get("ar") or []
+        action_group_list = p.get("agr") or []
 
         return Task(
             uuid=uuid,
@@ -203,6 +205,7 @@ class ThingsStore:
             notes=notes or None,
             project=project_list[0] if project_list else None,
             area=area_list[0] if area_list else None,
+            action_group=action_group_list[0] if action_group_list else None,
             tags=p.get("tg") or [],
             trashed=bool(p.get("tr", False)),
             deadline=_ts_to_dt(p.get("dd")),
@@ -294,8 +297,8 @@ class ThingsStore:
             if not t.trashed
             and t.status == STATUS_INCOMPLETE
             and t.start == START_INBOX
-            and not t.project
-            and not t.area
+            and self.effective_project_uuid(t) is None
+            and self.effective_area_uuid(t) is None
             and not t.is_project
             and not t.is_heading
             and t.title.strip()
@@ -303,6 +306,74 @@ class ThingsStore:
             and t.entity == ENTITY_TASK  # Task6 only; skip legacy Task3/Task4
         ]
         return sorted(results, key=lambda t: t.index)
+
+    def anytime(self) -> list[Task]:
+        """Tasks in Things Anytime view.
+
+        Includes open Task6 to-dos with st=Anytime where the scheduled date
+        is unset or not in the future. This includes tasks that are in Today.
+        """
+        today_utc = datetime.now(tz=timezone.utc).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+
+        def _project_visible(task: Task) -> bool:
+            project_uuid = self.effective_project_uuid(task)
+            if not project_uuid:
+                return True
+            project = self._tasks.get(project_uuid)
+            if not project:
+                return True
+            if project.trashed or project.status != STATUS_INCOMPLETE:
+                return False
+            if project.start == START_SOMEDAY:
+                return False
+            if project.start_date and project.start_date > today_utc:
+                return False
+            return True
+
+        results = [
+            t
+            for t in self._tasks.values()
+            if not t.trashed
+            and t.status == STATUS_INCOMPLETE
+            and t.start == START_ANYTIME
+            and not t.is_project
+            and not t.is_heading
+            and t.title.strip()
+            and t.entity == ENTITY_TASK
+            and (t.start_date is None or t.start_date <= today_utc)
+            and _project_visible(t)
+        ]
+        return sorted(results, key=lambda t: t.index)
+
+    def effective_project_uuid(self, task: Task) -> Optional[str]:
+        """Resolve effective project, including heading-based containment."""
+        if task.project:
+            return task.project
+        if task.action_group:
+            heading = self._tasks.get(task.action_group)
+            if heading and heading.project:
+                return heading.project
+        return None
+
+    def effective_area_uuid(self, task: Task) -> Optional[str]:
+        """Resolve effective area through task/project/heading relationships."""
+        if task.area:
+            return task.area
+
+        project_uuid = self.effective_project_uuid(task)
+        if project_uuid:
+            project = self._tasks.get(project_uuid)
+            if project and project.area:
+                return project.area
+
+        if task.action_group:
+            heading = self._tasks.get(task.action_group)
+            if heading and heading.area:
+                return heading.area
+
+        return None
 
     def projects(self, status: Optional[int] = STATUS_INCOMPLETE) -> list[Task]:
         results = [
@@ -337,4 +408,8 @@ class ThingsStore:
 
     def resolve_project_title(self, uuid: str) -> str:
         task = self._tasks.get(uuid)
-        return task.title if task else uuid
+        if task and task.title.strip():
+            return task.title
+        if not uuid:
+            return "(project)"
+        return f"(project {uuid[:8]})"

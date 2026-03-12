@@ -4,6 +4,7 @@ things-cli: A command-line interface for Things 3 via the Things Cloud API.
 
 Usage:
     python cli.py today
+    python cli.py anytime
     python cli.py inbox
     python cli.py projects
     python cli.py areas
@@ -56,12 +57,23 @@ def fmt_date(dt: Optional[datetime]) -> str:
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%d")
 
 
-def fmt_task_line(task: Task, store: ThingsStore, show_project: bool = False) -> str:
+def fmt_task_line(
+    task: Task,
+    store: ThingsStore,
+    show_project: bool = False,
+    show_today_markers: bool = False,
+) -> str:
     """Format a single task for terminal output."""
     parts = []
 
     # Checkbox
     parts.append(colored("○", DIM))
+
+    if show_today_markers:
+        if task.evening:
+            parts.append(colored("☽", BLUE))
+        elif task.is_today:
+            parts.append(colored("★", YELLOW))
 
     # Title
     title = task.title or colored("(untitled)", DIM)
@@ -73,8 +85,9 @@ def fmt_task_line(task: Task, store: ThingsStore, show_project: bool = False) ->
         parts.append(colored(" [" + ", ".join(tag_names) + "]", DIM))
 
     # Project
-    if show_project and task.project:
-        proj_title = store.resolve_project_title(task.project)
+    effective_project = store.effective_project_uuid(task)
+    if show_project and effective_project:
+        proj_title = store.resolve_project_title(effective_project)
         parts.append(colored(f" · {proj_title}", DIM))
 
     # Deadline
@@ -82,14 +95,7 @@ def fmt_task_line(task: Task, store: ThingsStore, show_project: bool = False) ->
         now = datetime.now(tz=timezone.utc)
         overdue = task.deadline < now
         color = RED if overdue else YELLOW
-        parts.append(colored(f" ⚑ {fmt_date(task.deadline)}", color))
-
-    # Start date (show if overdue)
-    if task.start_date:
-        sr_str = fmt_date(task.start_date)
-        today_str = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
-        if sr_str < today_str:
-            parts.append(colored(f" (due {sr_str})", DIM))
+        parts.append(colored(f" ⚑ due by {fmt_date(task.deadline)}", color))
 
     return " ".join(parts) if parts else title
 
@@ -103,6 +109,100 @@ def print_section(
     print(colored("─" * 40, DIM))
     for task in tasks:
         print("  " + fmt_task_line(task, store, show_project=show_project))
+
+
+def print_tasks_grouped(
+    tasks: list[Task],
+    store: ThingsStore,
+    indent: str = "  ",
+    show_today_markers: bool = False,
+):
+    """Print tasks grouped by area and project, preserving first-seen order."""
+    max_group_items = 3
+
+    def print_limited_tasks(group_tasks: list[Task], task_indent: str):
+        shown = group_tasks[:max_group_items]
+        for task in shown:
+            print(
+                task_indent
+                + fmt_task_line(
+                    task,
+                    store,
+                    show_project=False,
+                    show_today_markers=show_today_markers,
+                )
+            )
+        hidden = len(group_tasks) - len(shown)
+        if hidden > 0:
+            print(colored(f"{task_indent}Hiding {hidden} more", DIM))
+
+    if not tasks:
+        return
+
+    unscoped: list[Task] = []
+    project_only: dict[str, list[Task]] = {}
+    by_area = {}
+
+    for task in tasks:
+        project_uuid = store.effective_project_uuid(task)
+        area_uuid = store.effective_area_uuid(task)
+
+        if project_uuid:
+            if area_uuid:
+                if area_uuid not in by_area:
+                    by_area[area_uuid] = {"tasks": [], "projects": {}}
+                area_projects = by_area[area_uuid]["projects"]
+                if project_uuid not in area_projects:
+                    area_projects[project_uuid] = []
+                area_projects[project_uuid].append(task)
+            else:
+                if project_uuid not in project_only:
+                    project_only[project_uuid] = []
+                project_only[project_uuid].append(task)
+        elif area_uuid:
+            if area_uuid not in by_area:
+                by_area[area_uuid] = {"tasks": [], "projects": {}}
+            by_area[area_uuid]["tasks"].append(task)
+        else:
+            unscoped.append(task)
+
+    any_printed = False
+
+    if unscoped:
+        for task in unscoped:
+            print(
+                indent
+                + fmt_task_line(
+                    task,
+                    store,
+                    show_project=False,
+                    show_today_markers=show_today_markers,
+                )
+            )
+        any_printed = True
+
+    for project_uuid, project_tasks in project_only.items():
+        if any_printed:
+            print()
+        title = store.resolve_project_title(project_uuid)
+        print(colored(f"{indent}Project: {title}", BOLD))
+        print_limited_tasks(project_tasks, indent + "  ")
+        any_printed = True
+
+    for area_uuid, area_group in by_area.items():
+        if any_printed:
+            print()
+        area_title = store.resolve_area_title(area_uuid)
+        print(colored(f"{indent}Area: {area_title}", BOLD))
+
+        print_limited_tasks(area_group["tasks"], indent + "  ")
+
+        for project_uuid, project_tasks in area_group["projects"].items():
+            print()
+            project_title = store.resolve_project_title(project_uuid)
+            print(colored(f"{indent}  Project: {project_title}", BOLD))
+            print_limited_tasks(project_tasks, indent + "    ")
+        any_printed = True
 
 
 # ---------------------------------------------------------------------------
@@ -125,15 +225,12 @@ def cmd_today(store: ThingsStore, args):
 
     if regular:
         print()
-        for task in regular:
-            print("  " + fmt_task_line(task, store, show_project=True))
+        print_tasks_grouped(regular, store, indent="  ")
 
     if evening:
         print()
         print(colored("  ☽ This Evening", BOLD + BLUE))
-        print(colored("  " + "─" * 36, DIM))
-        for task in evening:
-            print("  " + fmt_task_line(task, store, show_project=True))
+        print_tasks_grouped(evening, store, indent="  ")
 
 
 def cmd_inbox(store: ThingsStore, args):
@@ -146,8 +243,20 @@ def cmd_inbox(store: ThingsStore, args):
 
     print(colored(f"□ Inbox  ({len(tasks)} tasks)", BOLD + BLUE))
     print()
-    for task in tasks:
-        print("  " + fmt_task_line(task, store))
+    print_tasks_grouped(tasks, store, indent="  ", show_today_markers=True)
+
+
+def cmd_anytime(store: ThingsStore, args):
+    """Show Anytime view."""
+    tasks = store.anytime()
+
+    if not tasks:
+        print(colored("Anytime is empty.", DIM))
+        return
+
+    print(colored(f"◌ Anytime  ({len(tasks)} tasks)", BOLD + CYAN))
+    print()
+    print_tasks_grouped(tasks, store, indent="  ", show_today_markers=True)
 
 
 def cmd_projects(store: ThingsStore, args):
@@ -248,13 +357,29 @@ def cmd_upcoming(store: ThingsStore, args):
     print(colored(f"▷ Upcoming  ({len(tasks)} tasks)", BOLD + CYAN))
 
     current_date = None
+    date_tasks: list[Task] = []
+
+    def flush_date_group(day: Optional[str], grouped_tasks: list[Task]):
+        if not day or not grouped_tasks:
+            return
+        print()
+        print(colored(f"  {day}", BOLD))
+        print_tasks_grouped(
+            grouped_tasks,
+            store,
+            indent="    ",
+            show_today_markers=True,
+        )
+
     for task in tasks:
         task_date = fmt_date(task.start_date)
         if task_date != current_date:
+            flush_date_group(current_date, date_tasks)
             current_date = task_date
-            print()
-            print(colored(f"  {task_date}", BOLD))
-        print("    " + fmt_task_line(task, store, show_project=True))
+            date_tasks = []
+        date_tasks.append(task)
+
+    flush_date_group(current_date, date_tasks)
 
 
 def _resolve_task_identifier(
@@ -427,6 +552,7 @@ def cmd_mark(store: ThingsStore, args, client: ThingsCloudClient):
 
 COMMANDS = {
     "today": cmd_today,
+    "anytime": cmd_anytime,
     "inbox": cmd_inbox,
     "projects": cmd_projects,
     "areas": cmd_areas,
