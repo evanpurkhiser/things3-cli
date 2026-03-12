@@ -1,0 +1,340 @@
+"""
+In-memory store that builds current state from Things Cloud history.
+"""
+
+import time
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from typing import Optional
+
+from things_cloud.schema import (
+    ENTITY_AREA,
+    ENTITY_CHECKLIST_ITEM,
+    ENTITY_TAG,
+    ENTITY_TASK,
+    ChecklistStatus,
+    RecurrenceType,
+    TaskStart,
+    TaskStatus,
+    TaskType,
+)
+
+START_ANYTIME = TaskStart.ANYTIME
+START_INBOX = TaskStart.INBOX
+START_SOMEDAY = TaskStart.SOMEDAY
+STATUS_INCOMPLETE = TaskStatus.INCOMPLETE
+STATUS_CANCELED = TaskStatus.CANCELED
+STATUS_COMPLETED = TaskStatus.COMPLETED
+TYPE_TODO = TaskType.TODO
+TYPE_PROJECT = TaskType.PROJECT
+TYPE_HEADING = TaskType.HEADING
+RECURRENCE_FIXED_SCHEDULE = RecurrenceType.FIXED_SCHEDULE
+RECURRENCE_AFTER_COMPLETION = RecurrenceType.AFTER_COMPLETION
+
+
+def _ts_to_dt(ts) -> Optional[datetime]:
+    if ts is None:
+        return None
+    return datetime.fromtimestamp(ts, tz=timezone.utc)
+
+
+@dataclass
+class Tag:
+    uuid: str
+    title: str
+    shortcut: Optional[str] = None
+    index: int = 0
+
+
+@dataclass
+class Area:
+    uuid: str
+    title: str
+    tags: list[str] = field(default_factory=list)
+    index: int = 0
+
+
+@dataclass
+class Task:
+    uuid: str
+    title: str
+    status: int = STATUS_INCOMPLETE
+    start: int = START_INBOX
+    type: int = TYPE_TODO
+    entity: str = "Task6"  # wire entity type: Task3, Task4, Task6
+    notes: Optional[str] = None
+    project: Optional[str] = None  # UUID
+    area: Optional[str] = None  # UUID
+    tags: list[str] = field(default_factory=list)  # UUIDs
+    trashed: bool = False
+    deadline: Optional[datetime] = None
+    start_date: Optional[datetime] = None
+    stop_date: Optional[datetime] = None
+    creation_date: Optional[datetime] = None
+    modification_date: Optional[datetime] = None
+    index: int = 0
+    today_index: int = 0
+    today_index_reference: Optional[int] = None  # raw unix ts from tir (tir)
+    leaves_tombstone: bool = False  # lt: True once synced to another device
+    instance_creation_paused: bool = False  # icp: True for all projects
+    evening: bool = False  # sb: True = appears in Evening section of Today
+    recurrence_rule: Optional[dict] = None  # rr: recurrence template rule
+    recurrence_templates: list[str] = field(default_factory=list)  # rt: template refs
+
+    @property
+    def is_incomplete(self) -> bool:
+        return self.status == STATUS_INCOMPLETE
+
+    @property
+    def is_completed(self) -> bool:
+        return self.status == STATUS_COMPLETED
+
+    @property
+    def is_canceled(self) -> bool:
+        return self.status == STATUS_CANCELED
+
+    @property
+    def is_todo(self) -> bool:
+        return self.type == TYPE_TODO
+
+    @property
+    def is_project(self) -> bool:
+        return self.type == TYPE_PROJECT
+
+    @property
+    def is_heading(self) -> bool:
+        return self.type == TYPE_HEADING
+
+    @property
+    def is_today(self) -> bool:
+        """Task appears in Things Today view.
+
+        A task is in Today when:
+          - st == ANYTIME (start=1)
+          - sr is set and sr <= today's local midnight
+
+        The local date is used because Things compares scheduled dates in the
+        device's local timezone. Tasks with a scheduled date in the past that
+        were not completed remain in Today (they roll over day-to-day).
+
+        The `sb` (evening) bit controls whether the task appears in the regular
+        section (sb=0) or the "This Evening" section (sb=1) of Today.
+
+        Note: this matches the `things.py` SQLite library's Today prediction
+        logic: `startDate IS NOT NULL AND start=Anytime AND startDate <= today`.
+        """
+        if self.start_date is None:
+            return False
+        if self.start != 1:  # must be Anytime
+            return False
+        # sr is stored as UTC midnight of the scheduled date. Compare dates in UTC
+        # (Things stores dates as day-granularity values, timezone-independent).
+        today_utc = datetime.now(tz=timezone.utc).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        return self.start_date <= today_utc
+
+    @property
+    def is_inbox(self) -> bool:
+        return self.start == START_INBOX and not self.project and not self.area
+
+    @property
+    def in_someday(self) -> bool:
+        return self.start == START_SOMEDAY
+
+    @property
+    def is_recurring(self) -> bool:
+        # rr exists on templates, rt points to template on generated instances.
+        return bool(self.recurrence_rule) or bool(self.recurrence_templates)
+
+    @property
+    def is_recurrence_template(self) -> bool:
+        return bool(self.recurrence_rule) and not self.recurrence_templates
+
+    @property
+    def is_recurrence_instance(self) -> bool:
+        return bool(self.recurrence_templates) and not self.recurrence_rule
+
+
+class ThingsStore:
+    """
+    Builds and queries a current-state snapshot from raw history items.
+    """
+
+    def __init__(self, raw_state: dict[str, dict]):
+        self._tasks: dict[str, Task] = {}
+        self._areas: dict[str, Area] = {}
+        self._tags: dict[str, Tag] = {}
+        self._tag_by_title: dict[str, str] = {}  # title -> uuid
+
+        self._build(raw_state)
+
+    def _build(self, raw_state: dict[str, dict]):
+        for uuid, obj in raw_state.items():
+            entity = obj.get("e", "")
+            p = obj.get("p", {})
+
+            if entity.startswith("Task"):
+                self._tasks[uuid] = self._parse_task(uuid, p, entity)
+            elif entity.startswith("Area"):
+                self._areas[uuid] = self._parse_area(uuid, p)
+            elif entity.startswith("Tag"):
+                tag = self._parse_tag(uuid, p)
+                self._tags[uuid] = tag
+                if tag.title:
+                    self._tag_by_title[tag.title] = uuid
+
+    def _parse_task(self, uuid: str, p: dict, entity: str = "Task6") -> Task:
+        notes = p.get("nt")
+        if isinstance(notes, dict):
+            notes = notes.get("v")  # Task6 notes format
+
+        # project and area are lists in the wire format
+        project_list = p.get("pr") or []
+        area_list = p.get("ar") or []
+
+        return Task(
+            uuid=uuid,
+            title=p.get("tt") or "",
+            status=p.get("ss", STATUS_INCOMPLETE),
+            start=p.get("st", START_INBOX),
+            type=p.get("tp", TYPE_TODO),
+            entity=entity,
+            notes=notes or None,
+            project=project_list[0] if project_list else None,
+            area=area_list[0] if area_list else None,
+            tags=p.get("tg") or [],
+            trashed=bool(p.get("tr", False)),
+            deadline=_ts_to_dt(p.get("dd")),
+            start_date=_ts_to_dt(p.get("sr")),
+            stop_date=_ts_to_dt(p.get("sp")),
+            creation_date=_ts_to_dt(p.get("cd")),
+            modification_date=_ts_to_dt(p.get("md")),
+            index=p.get("ix", 0),
+            today_index=p.get("ti", 0),
+            today_index_reference=p.get("tir") or None,
+            leaves_tombstone=bool(p.get("lt", False)),
+            instance_creation_paused=bool(p.get("icp", False)),
+            evening=bool(p.get("sb", 0)),
+            recurrence_rule=p.get("rr"),
+            recurrence_templates=p.get("rt") or [],
+        )
+
+    def _parse_area(self, uuid: str, p: dict) -> Area:
+        return Area(
+            uuid=uuid,
+            title=p.get("tt") or "",
+            tags=p.get("tg") or [],
+            index=p.get("ix", 0),
+        )
+
+    def _parse_tag(self, uuid: str, p: dict) -> Tag:
+        return Tag(
+            uuid=uuid,
+            title=p.get("tt") or "",
+            shortcut=p.get("sh"),
+            index=p.get("ix", 0),
+        )
+
+    # --- Query API ---
+
+    def tasks(
+        self,
+        status: Optional[int] = STATUS_INCOMPLETE,
+        trashed: bool = False,
+        type: Optional[int] = None,
+    ) -> list[Task]:
+        results = []
+        for task in self._tasks.values():
+            if trashed is not None and task.trashed != trashed:
+                continue
+            if status is not None and task.status != status:
+                continue
+            if type is not None and task.type != type:
+                continue
+            if task.is_heading:
+                continue
+            results.append(task)
+        return sorted(results, key=lambda t: t.index)
+
+    def today(self) -> list[Task]:
+        """Tasks in Today view, ordered like the app's Today list."""
+        results = [
+            t
+            for t in self._tasks.values()
+            if not t.trashed
+            and t.status == STATUS_INCOMPLETE
+            and not t.is_heading
+            and not t.is_project
+            and t.title.strip()
+            and t.entity == ENTITY_TASK  # Task6 only; skip legacy Task3/Task4
+            and t.is_today
+        ]
+
+        def _today_sort_key(task: Task):
+            # Things uses `ti` (today index) where larger values are higher in the
+            # list. `ti=0` behaves like an "unset" value and currently appears
+            # before indexed items in Today.
+            if task.today_index == 0:
+                sr_ts = int(task.start_date.timestamp()) if task.start_date else 0
+                return (0, -sr_ts, -task.index)
+            return (1, -task.today_index, -task.index)
+
+        return sorted(results, key=_today_sort_key)
+
+    def inbox(self) -> list[Task]:
+        """Tasks in Things Inbox view.
+
+        Only Task6 entities are returned — legacy Task3/Task4 items predate
+        the current sync engine and are not shown by the Things app.
+        """
+        results = [
+            t
+            for t in self._tasks.values()
+            if not t.trashed
+            and t.status == STATUS_INCOMPLETE
+            and t.start == START_INBOX
+            and not t.project
+            and not t.area
+            and not t.is_project
+            and not t.is_heading
+            and t.title.strip()
+            and t.creation_date is not None  # skip partial/ghost items lacking cd
+            and t.entity == ENTITY_TASK  # Task6 only; skip legacy Task3/Task4
+        ]
+        return sorted(results, key=lambda t: t.index)
+
+    def projects(self, status: Optional[int] = STATUS_INCOMPLETE) -> list[Task]:
+        results = [
+            t
+            for t in self._tasks.values()
+            if not t.trashed and t.is_project and (status is None or t.status == status)
+        ]
+        return sorted(results, key=lambda t: t.index)
+
+    def areas(self) -> list[Area]:
+        return sorted(self._areas.values(), key=lambda a: a.index)
+
+    def tags(self) -> list[Tag]:
+        return sorted(self._tags.values(), key=lambda t: t.index)
+
+    def get_task(self, uuid: str) -> Optional[Task]:
+        return self._tasks.get(uuid)
+
+    def get_area(self, uuid: str) -> Optional[Area]:
+        return self._areas.get(uuid)
+
+    def get_tag(self, uuid: str) -> Optional[Tag]:
+        return self._tags.get(uuid)
+
+    def resolve_tag_title(self, uuid: str) -> str:
+        tag = self._tags.get(uuid)
+        return tag.title if tag else uuid
+
+    def resolve_area_title(self, uuid: str) -> str:
+        area = self._areas.get(uuid)
+        return area.title if area else uuid
+
+    def resolve_project_title(self, uuid: str) -> str:
+        task = self._tasks.get(uuid)
+        return task.title if task else uuid
