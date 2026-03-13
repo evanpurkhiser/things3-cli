@@ -298,7 +298,32 @@ def _print_project(project: Task, store: ThingsStore, indent: int = 2):
     prefix = " " * indent
     title = project.title or colored("(untitled)", DIM)
     dl = colored(f" ⚑ {fmt_date(project.deadline)}", YELLOW) if project.deadline else ""
-    print(f"{prefix}{colored('◎', DIM)} {title}{dl}")
+
+    if project.in_someday:
+        marker = "◌"
+    else:
+        project_tasks = [
+            t
+            for t in store.tasks(status=None, trashed=False, type=0)
+            if store.effective_project_uuid(t) == project.uuid
+        ]
+        total = len(project_tasks)
+        done = sum(1 for t in project_tasks if t.is_completed)
+
+        if total == 0 or done == 0:
+            marker = "◯"
+        elif done == total:
+            marker = "◉"
+        else:
+            ratio = done / total
+            if ratio < 1 / 3:
+                marker = "◔"
+            elif ratio < 2 / 3:
+                marker = "◑"
+            else:
+                marker = "◕"
+
+    print(f"{prefix}{colored(marker, DIM)} {title}{dl}")
 
 
 def cmd_areas(store: ThingsStore, args):
