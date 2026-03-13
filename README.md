@@ -49,7 +49,7 @@ $ things3 today
   - [ ] Set/remove recurrence
 - [x] `schedule` — set when/start date, deadline, today/evening/someday
 - [ ] `move` — move tasks/projects between projects, areas, headings, inbox
-- [ ] `reorder` — reorder tasks, projects, and headings within their lists
+- [x] `reorder` — reorder tasks, projects, and headings within their lists
 - [x] Show `someday` list and `logbook` (completed tasks with date filtering)
 - [ ] Heading management — create/rename/delete/reorder headings within projects
 - [ ] `find` / filters (title, tag, area, project, status, date range)

@@ -207,12 +207,14 @@ class ThingsStore:
         self._markable_ids_sorted: list[str] = []
 
         self._area_ids_sorted: list[str] = []
+        self._task_ids_sorted: list[str] = []
 
         self._build(raw_state)
         self._build_project_progress_index()
         self._short_ids = _shortest_unique_prefixes(self._short_id_domain(raw_state))
         self._build_mark_indexes()
         self._area_ids_sorted = sorted(self._areas.keys())
+        self._task_ids_sorted = sorted(self._tasks.keys())
 
     def _build_project_progress_index(self) -> None:
         totals: dict[str, int] = {}
@@ -649,4 +651,12 @@ class ThingsStore:
         """
         return self._resolve_prefix(
             identifier, self._areas, self._area_ids_sorted, label="Area"
+        )
+
+    def resolve_task_identifier(
+        self, identifier: str
+    ) -> tuple[Optional[Task], str, list[Task]]:
+        """Resolve *identifier* to any task/project/heading."""
+        return self._resolve_prefix(
+            identifier, self._tasks, self._task_ids_sorted, label="Task"
         )

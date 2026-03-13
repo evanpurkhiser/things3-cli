@@ -14,6 +14,7 @@ Usage:
     things3 areas
     things3 tags
     things3 schedule <task-id> [--when today|someday|anytime|evening|YYYY-MM-DD]
+    things3 reorder <id> --before <id> | --after <id>
     things3 mark <task-id> --done|--incomplete|--canceled
 
 """
@@ -1090,6 +1091,67 @@ def cmd_schedule(store: ThingsStore, args, client: ThingsCloudClient):
     )
 
 
+def cmd_reorder(store: ThingsStore, args, client: ThingsCloudClient):
+    """Reorder task/project/heading relative to another item."""
+    item, err, ambiguous = store.resolve_task_identifier(args.item_id)
+    if not item:
+        print(err, file=sys.stderr)
+        if ambiguous:
+            id_prefix_len = store.unique_prefix_length([t.uuid for t in ambiguous])
+            for match in ambiguous:
+                if match.is_project:
+                    print(
+                        f"  {fmt_project_line(match, store, id_prefix_len=id_prefix_len)}"
+                    )
+                else:
+                    print(
+                        f"  {fmt_task_line(match, store, show_project=True, id_prefix_len=id_prefix_len)}"
+                    )
+        return
+
+    anchor_id = args.before_id if args.before_id else args.after_id
+    anchor, err, ambiguous = store.resolve_task_identifier(anchor_id)
+    if not anchor:
+        print(err, file=sys.stderr)
+        if ambiguous:
+            id_prefix_len = store.unique_prefix_length([t.uuid for t in ambiguous])
+            for match in ambiguous:
+                if match.is_project:
+                    print(
+                        f"  {fmt_project_line(match, store, id_prefix_len=id_prefix_len)}"
+                    )
+                else:
+                    print(
+                        f"  {fmt_task_line(match, store, show_project=True, id_prefix_len=id_prefix_len)}"
+                    )
+        return
+
+    if item.uuid == anchor.uuid:
+        print("Cannot reorder an item relative to itself.", file=sys.stderr)
+        return
+
+    new_index = anchor.index - 1 if args.before_id else anchor.index + 1
+    update = {"ix": new_index}
+    try:
+        client.update_task_fields(item.uuid, update, entity=item.entity)
+    except Exception as e:
+        print(f"Failed to reorder item: {e}", file=sys.stderr)
+        return
+
+    print(
+        colored(f"{ICONS.done} Reordered", GREEN),
+        f"{item.title}  {colored(item.uuid, DIM)}",
+        colored(
+            (
+                f"(before={anchor.title}, index={new_index})"
+                if args.before_id
+                else f"(after={anchor.title}, index={new_index})"
+            ),
+            DIM,
+        ),
+    )
+
+
 def _validate_recurring_done(task: Task, store: ThingsStore) -> tuple[bool, str]:
     """Validate whether recurring completion can be done safely.
 
@@ -1277,12 +1339,20 @@ def _run_mark(store: ThingsStore, args: argparse.Namespace, client: ThingsCloudC
 
 def _run_new(store: ThingsStore, args: argparse.Namespace, client: ThingsCloudClient):
     cmd_new(store, args, client)
+    return None
 
 
 def _run_schedule(
     store: ThingsStore, args: argparse.Namespace, client: ThingsCloudClient
 ):
     cmd_schedule(store, args, client)
+    return None
+
+
+def _run_reorder(
+    store: ThingsStore, args: argparse.Namespace, client: ThingsCloudClient
+):
+    cmd_reorder(store, args, client)
     return None
 
 
@@ -1300,6 +1370,7 @@ COMMANDS: dict[str, CommandHandler] = {
     "upcoming": _adapt_store_command(cmd_upcoming),
     "project": _adapt_store_command(cmd_project),
     "schedule": _run_schedule,
+    "reorder": _run_reorder,
     "mark": _run_mark,
 }
 
@@ -1436,6 +1507,24 @@ def main():
         help="Clear existing deadline",
     )
 
+    reorder_parser = subparsers.add_parser(
+        "reorder", help="Reorder item relative to another item"
+    )
+    reorder_parser.add_argument(
+        "item_id",
+        help="Task/Project/Heading UUID (or unique UUID prefix)",
+    )
+    position_group = reorder_parser.add_mutually_exclusive_group(required=True)
+    position_group.add_argument(
+        "--before",
+        dest="before_id",
+        help="Place item before this task/project/heading UUID/prefix",
+    )
+    position_group.add_argument(
+        "--after",
+        dest="after_id",
+        help="Place item after this task/project/heading UUID/prefix",
+    )
     # set-auth — standalone, no data fetch needed
     subparsers.add_parser(SET_AUTH_COMMAND, help="Configure Things Cloud credentials")
 
