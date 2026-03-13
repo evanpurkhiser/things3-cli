@@ -168,6 +168,29 @@ class ThingsCloudClient:
             }
         )
 
+    def set_task_statuses(self, updates: list[dict]) -> int:
+        """Set status for multiple tasks/projects in a single cloud commit.
+
+        updates entries must include:
+          - task_uuid: str
+          - status: int
+          - entity: str (optional, defaults to Task6)
+          - stop_date: float | None (optional)
+        """
+        now = time.time()
+        changes: dict[str, dict] = {}
+        for item in updates:
+            task_uuid = item["task_uuid"]
+            changes[task_uuid] = {
+                "e": item.get("entity", "Task6"),
+                "p": {
+                    "ss": item["status"],
+                    "sp": item.get("stop_date"),
+                    "md": now,
+                },
+            }
+        return self.commit(changes)
+
     def mark_task_done(self, task_uuid: str, entity: str = "Task6") -> int:
         """Mark a task completed using the observed Task6 mutation shape.
 

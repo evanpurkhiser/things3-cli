@@ -37,7 +37,7 @@ $ things3 today
 - [x] Update task status with `mark --done|--incomplete|--canceled`
 - [x] Replay cloud history (`t=0/1/2`) with append-only local cache in XDG state
 - [x] Cache folded state and history key for fast startup (~450ms vs ~1500ms)
-- [ ] Mark multiple tasks at once (`mark --done <id1> <id2> ...`)
+- [x] Mark multiple tasks at once (`mark --done <id1> <id2> ...`)
 - [ ] Show task details (notes, checklist items)
 - [ ] `add` — create tasks/projects with title, notes, tags, checklist items, project, area, dates
 - [ ] `edit` — modify existing tasks/projects

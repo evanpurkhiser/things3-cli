@@ -19,6 +19,7 @@ Usage:
 import argparse
 import getpass
 import sys
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Callable, Optional
@@ -893,61 +894,83 @@ def _validate_recurring_done(task: Task, store: ThingsStore) -> tuple[bool, str]
     )
 
 
-def cmd_mark(store: ThingsStore, args, client: ThingsCloudClient):
-    """Mark one task/project by UUID (or unique UUID prefix)."""
-    # task_id is a required positional and --done/--incomplete/--canceled
-    # are a required mutually-exclusive group, both enforced by argparse.
-    action = "done" if args.done else "incomplete" if args.incomplete else "canceled"
-
-    task, err, ambiguous = store.resolve_mark_identifier(args.task_id)
-    if not task:
-        print(err, file=sys.stderr)
-        if ambiguous:
-            id_prefix_len = store.unique_prefix_length([t.uuid for t in ambiguous])
-            for match in ambiguous:
-                if match.is_project:
-                    print(
-                        f"  {fmt_project_line(match, store, id_prefix_len=id_prefix_len)}"
-                    )
-                else:
-                    print(
-                        f"  {fmt_task_line(match, store, show_project=True, id_prefix_len=id_prefix_len)}"
-                    )
-        return
-
+def _validate_mark_target(task: Task, action: str, store: ThingsStore) -> str:
+    """Return an error message when *task* cannot be marked for *action*."""
     if task.entity != "Task6":
-        print("Only Task6 tasks are supported by mark right now.", file=sys.stderr)
-        return
+        return "Only Task6 tasks are supported by mark right now."
     if task.is_heading:
-        print("Headings cannot be marked.", file=sys.stderr)
-        return
+        return "Headings cannot be marked."
     if task.trashed:
-        print("Task is in Trash and cannot be completed.", file=sys.stderr)
-        return
+        return "Task is in Trash and cannot be completed."
     if action == "done" and task.status == 3:
-        print("Task is already completed.", file=sys.stderr)
-        return
+        return "Task is already completed."
     if action == "incomplete" and task.status == 0:
-        print("Task is already incomplete/open.", file=sys.stderr)
-        return
+        return "Task is already incomplete/open."
     if action == "canceled" and task.status == 2:
-        print("Task is already canceled.", file=sys.stderr)
-        return
+        return "Task is already canceled."
     if action == "done" and task.is_recurring:
         ok, reason = _validate_recurring_done(task, store)
         if not ok:
-            print(reason, file=sys.stderr)
-            return
+            return reason
+    return ""
+
+
+def cmd_mark(store: ThingsStore, args, client: ThingsCloudClient):
+    """Mark one or more tasks/projects by UUID (or unique UUID prefix)."""
+    # task_ids is a required positional and --done/--incomplete/--canceled
+    # are a required mutually-exclusive group, both enforced by argparse.
+    action = "done" if args.done else "incomplete" if args.incomplete else "canceled"
+
+    targets: list[Task] = []
+    seen: set[str] = set()
+    for identifier in args.task_ids:
+        task, err, ambiguous = store.resolve_mark_identifier(identifier)
+        if not task:
+            print(err, file=sys.stderr)
+            if ambiguous:
+                id_prefix_len = store.unique_prefix_length([t.uuid for t in ambiguous])
+                for match in ambiguous:
+                    if match.is_project:
+                        print(
+                            f"  {fmt_project_line(match, store, id_prefix_len=id_prefix_len)}"
+                        )
+                    else:
+                        print(
+                            f"  {fmt_task_line(match, store, show_project=True, id_prefix_len=id_prefix_len)}"
+                        )
+            continue
+        if task.uuid in seen:
+            continue
+        seen.add(task.uuid)
+        targets.append(task)
+
+    updates: list[dict] = []
+    successes: list[Task] = []
+
+    for task in targets:
+        validation_error = _validate_mark_target(task, action, store)
+        if validation_error:
+            print(f"{validation_error} ({task.title})", file=sys.stderr)
+            continue
+
+        stop_date = time.time() if action in {"done", "canceled"} else None
+        updates.append(
+            {
+                "task_uuid": task.uuid,
+                "status": 3 if action == "done" else 0 if action == "incomplete" else 2,
+                "entity": task.entity,
+                "stop_date": stop_date,
+            }
+        )
+        successes.append(task)
+
+    if not updates:
+        return
 
     try:
-        if action == "done":
-            client.mark_task_done(task.uuid, entity=task.entity)
-        elif action == "incomplete":
-            client.mark_task_incomplete(task.uuid, entity=task.entity)
-        else:
-            client.mark_task_canceled(task.uuid, entity=task.entity)
+        client.set_task_statuses(updates)
     except Exception as e:
-        print(f"Failed to mark item {action}: {e}", file=sys.stderr)
+        print(f"Failed to mark items {action}: {e}", file=sys.stderr)
         return
 
     label = {
@@ -955,7 +978,8 @@ def cmd_mark(store: ThingsStore, args, client: ThingsCloudClient):
         "incomplete": f"{ICONS.incomplete} Incomplete",
         "canceled": f"{ICONS.canceled} Canceled",
     }[action]
-    print(colored(label, GREEN), f"{task.title}  {colored(task.uuid, DIM)}")
+    for task in successes:
+        print(colored(label, GREEN), f"{task.title}  {colored(task.uuid, DIM)}")
 
 
 def cmd_set_auth(_args):
@@ -1079,8 +1103,9 @@ def main():
         "mark", help="Mark a task done, incomplete, or canceled"
     )
     mark_parser.add_argument(
-        "task_id",
-        help="Task/Project UUID (or unique UUID prefix)",
+        "task_ids",
+        nargs="+",
+        help="Task/Project UUID(s) (or unique UUID prefixes)",
     )
     mark_group = mark_parser.add_mutually_exclusive_group(required=True)
     mark_group.add_argument(
