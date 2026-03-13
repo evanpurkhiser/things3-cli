@@ -36,6 +36,7 @@ $ things3 today
 - [x] List tags with `tags`
 - [x] Update task status with `mark --done|--incomplete|--canceled`
 - [x] Replay cloud history (`t=0/1/2`) with append-only local cache in XDG state
+- [ ] Mark multiple tasks at once (`mark --done <id1> <id2> ...`)
 - [ ] Show `someday` list and special lists (`tomorrow`, `deadlines`, `repeating`)
 - [ ] Create tasks from CLI (`add`) with list/date/project/tag targeting
 - [ ] Edit/move tasks (`schedule`, `tag`, `move`) for inbox processing workflows
