@@ -300,12 +300,14 @@ def cmd_today(store: ThingsStore, args):
         print()
         for item in regular:
             if item.is_project:
-                _print_project(
-                    item,
-                    store,
-                    indent=2,
-                    show_indicators=False,
-                    id_prefix_len=id_prefix_len,
+                print(
+                    "  "
+                    + fmt_project_line(
+                        item,
+                        store,
+                        show_indicators=False,
+                        id_prefix_len=id_prefix_len,
+                    )
                 )
             else:
                 print(
@@ -324,12 +326,14 @@ def cmd_today(store: ThingsStore, args):
         print()
         for item in evening:
             if item.is_project:
-                _print_project(
-                    item,
-                    store,
-                    indent=2,
-                    show_indicators=False,
-                    id_prefix_len=id_prefix_len,
+                print(
+                    "  "
+                    + fmt_project_line(
+                        item,
+                        store,
+                        show_indicators=False,
+                        id_prefix_len=id_prefix_len,
+                    )
                 )
             else:
                 print(
@@ -396,7 +400,7 @@ def cmd_projects(store: ThingsStore, args):
     if no_area:
         print()
         for p in no_area:
-            _print_project(p, store, id_prefix_len=id_prefix_len)
+            print("  " + fmt_project_line(p, store, id_prefix_len=id_prefix_len))
 
     for area_uuid, area_projects in by_area.items():
         area_title = store.resolve_area_title(area_uuid) if area_uuid else "?"
@@ -404,17 +408,16 @@ def cmd_projects(store: ThingsStore, args):
         area_id = _id_prefix(area_uuid, id_prefix_len) if area_uuid else "?"
         print(f"  {area_id} {colored(area_title, BOLD)}")
         for p in area_projects:
-            _print_project(p, store, indent=4, id_prefix_len=id_prefix_len)
+            print("    " + fmt_project_line(p, store, id_prefix_len=id_prefix_len))
 
 
-def _print_project(
+def fmt_project_line(
     project: Task,
     store: ThingsStore,
-    indent: int = 2,
     show_indicators: bool = True,
     id_prefix_len: Optional[int] = None,
-):
-    prefix = " " * indent
+) -> str:
+    """Format a single project for terminal output."""
     title = project.title or colored("(untitled)", DIM)
     dl = colored(f" ⚑ {fmt_date(project.deadline)}", YELLOW) if project.deadline else ""
 
@@ -446,7 +449,7 @@ def _print_project(
             status_marker = f" {colored('⭑', YELLOW)}"
 
     id_part = f"{_id_prefix(project.uuid, id_prefix_len)} " if id_prefix_len else ""
-    print(f"{prefix}{id_part}{colored(marker, DIM)}{status_marker} {title}{dl}")
+    return f"{id_part}{colored(marker, DIM)}{status_marker} {title}{dl}"
 
 
 def cmd_areas(store: ThingsStore, args):
@@ -625,9 +628,20 @@ def cmd_mark(store: ThingsStore, args, client: ThingsCloudClient):
         return
     action = selected[0]
 
-    task, err = store.resolve_mark_identifier(args.task_id)
+    task, err, ambiguous = store.resolve_mark_identifier(args.task_id)
     if not task:
         print(err, file=sys.stderr)
+        if ambiguous:
+            id_prefix_len = store.unique_prefix_length([t.uuid for t in ambiguous])
+            for match in ambiguous:
+                if match.is_project:
+                    print(
+                        f"  {fmt_project_line(match, store, id_prefix_len=id_prefix_len)}"
+                    )
+                else:
+                    print(
+                        f"  {fmt_task_line(match, store, show_project=True, id_prefix_len=id_prefix_len)}"
+                    )
         return
 
     if task.entity != "Task6":

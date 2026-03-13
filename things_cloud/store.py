@@ -533,17 +533,23 @@ class ThingsStore:
                 max_need = max(max_need, 6)
         return max_need
 
-    def resolve_mark_identifier(self, identifier: str) -> tuple[Optional[Task], str]:
+    def resolve_mark_identifier(
+        self, identifier: str
+    ) -> tuple[Optional[Task], str, list[Task]]:
+        """Resolve *identifier* (full UUID or short-id prefix) to a markable Task.
+
+        Returns ``(task, error_message, ambiguous_matches)``.
+        On success *task* is set and the other two are empty/blank.
+        On ambiguity *task* is ``None``, *error_message* describes the problem,
+        and *ambiguous_matches* contains the conflicting tasks (up to 10).
+        """
         ident = identifier.strip()
         if not ident:
-            return None, "Missing task identifier."
+            return None, "Missing task identifier.", []
 
         exact = self._tasks.get(ident)
         if exact and exact.uuid in self._markable_ids:
-            return exact, ""
-
-        if not ident:
-            return None, "Missing task identifier."
+            return exact, "", []
 
         start = bisect_left(self._markable_ids_sorted, ident)
         end = bisect_right(self._markable_ids_sorted, ident + "\uffff")
@@ -553,16 +559,17 @@ class ThingsStore:
             matched_uuid = self._markable_ids_sorted[start]
             task = self._tasks.get(matched_uuid)
             if task:
-                return task, ""
+                return task, "", []
 
         if match_count > 1:
             matches = [
                 self._tasks[self._markable_ids_sorted[i]]
-                for i in range(start, min(end, start + 5))
+                for i in range(start, min(end, start + 10))
             ]
-            sample = ", ".join(
-                f"{task.uuid} ({task.title or '(untitled)'})" for task in matches[:5]
-            )
-            return None, f"Ambiguous item id prefix. Matches: {sample}"
+            remaining = match_count - len(matches)
+            msg = "Ambiguous id prefix."
+            if remaining:
+                msg += f" ({match_count} matches, showing first {len(matches)})"
+            return None, msg, matches
 
-        return None, f"Item not found: {identifier}"
+        return None, f"Item not found: {identifier}", []
