@@ -17,7 +17,7 @@ Then run commands:
 
 ```
 $ things3 today
-★ Today  (5 tasks)
+⭑ Today  (5 tasks)
 
   ○ Morning routine
   ○ Complete taxes  ⚑ due by 2026-04-10

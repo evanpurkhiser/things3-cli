@@ -90,7 +90,7 @@ def fmt_task_line(
         if task.evening:
             parts.append(colored("☽", BLUE))
         elif task.is_today:
-            parts.append(colored("★", YELLOW))
+            parts.append(colored("⭑", YELLOW))
 
     # Title
     title = task.title or colored("(untitled)", DIM)
@@ -282,12 +282,12 @@ def cmd_today(store: ThingsStore, args):
         project_label = "project" if project_count == 1 else "projects"
         print(
             colored(
-                f"★ Today  ({len(tasks)} tasks, {project_count} {project_label})",
+                f"⭑ Today  ({len(tasks)} tasks, {project_count} {project_label})",
                 BOLD + YELLOW,
             )
         )
     else:
-        print(colored(f"★ Today  ({len(tasks)} tasks)", BOLD + YELLOW))
+        print(colored(f"⭑ Today  ({len(tasks)} tasks)", BOLD + YELLOW))
 
     if regular:
         print()
@@ -440,7 +440,7 @@ def _print_project(
         if project.evening:
             status_marker = f" {colored('☽', BLUE)}"
         elif project.is_today:
-            status_marker = f" {colored('★', YELLOW)}"
+            status_marker = f" {colored('⭑', YELLOW)}"
 
     id_part = f"{_id_prefix(project.uuid, id_prefix_len)} " if id_prefix_len else ""
     print(f"{prefix}{id_part}{colored(marker, DIM)}{status_marker} {title}{dl}")
