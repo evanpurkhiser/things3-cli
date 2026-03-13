@@ -54,6 +54,11 @@ $ things3 today
 - [ ] Heading management — create/rename/delete/reorder headings within projects
 - [ ] `find` / filters (title, tag, area, project, status, date range)
 - [ ] Machine-readable output (`--json`, `--toon`) for scripting and LLM/tool use
+- [ ] Testing
+  - [ ] Sync engine tests (append log replay, incremental fold, state caching)
+  - [ ] Things store tests (task queries, project progress, prefix resolution)
+  - [ ] Command output tests (formatting, grouping, filtering)
+  - [ ] E2E snapshot tests (full command output against fixture data)
 
 ## Install
 
