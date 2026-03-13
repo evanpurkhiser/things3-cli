@@ -166,7 +166,10 @@ class Task:
 
     @property
     def in_someday(self) -> bool:
-        return self.start == START_SOMEDAY
+        # Tasks marked Someday can also carry a concrete future start date.
+        # In Things UI those behave like scheduled/upcoming items, not plain
+        # Someday backlog items.
+        return self.start == START_SOMEDAY and self.start_date is None
 
     @property
     def is_recurring(self) -> bool:

@@ -104,12 +104,12 @@ def fmt_date(dt: Optional[datetime]) -> str:
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%d")
 
 
-def _task_box(task: Task, show_someday_icon: bool = True) -> str:
+def _task_box(task: Task) -> str:
     if task.is_completed:
         return ICONS.task_done
     if task.is_canceled:
         return ICONS.task_canceled
-    if show_someday_icon and task.in_someday:
+    if task.in_someday:
         return ICONS.task_someday
     return ICONS.task_open
 
@@ -129,14 +129,13 @@ def fmt_task_line(
     store: ThingsStore,
     show_project: bool = False,
     show_today_markers: bool = False,
-    show_someday_icon: bool = True,
     id_prefix_len: Optional[int] = None,
 ) -> str:
     """Format a single task for terminal output."""
     parts = []
 
     # Checkbox
-    box = _task_box(task, show_someday_icon=show_someday_icon)
+    box = _task_box(task)
     parts.append(colored(box, DIM))
 
     if show_today_markers:
@@ -191,7 +190,6 @@ def print_tasks_grouped(
     store: ThingsStore,
     indent: str = "  ",
     show_today_markers: bool = False,
-    show_someday_icon: bool = True,
     id_prefix_len: Optional[int] = None,
 ):
     """Print tasks grouped by area and project, preserving first-seen order."""
@@ -207,7 +205,6 @@ def print_tasks_grouped(
                     store,
                     show_project=False,
                     show_today_markers=show_today_markers,
-                    show_someday_icon=show_someday_icon,
                     id_prefix_len=id_prefix_len,
                 )
             )
@@ -264,7 +261,6 @@ def print_tasks_grouped(
                     store,
                     show_project=False,
                     show_today_markers=show_today_markers,
-                    show_someday_icon=show_someday_icon,
                     id_prefix_len=id_prefix_len,
                 )
             )
@@ -651,6 +647,8 @@ def cmd_upcoming(store: ThingsStore, args):
 
     tasks = []
     for t in store.tasks(status=0):
+        if t.in_someday:
+            continue
         if t.start_date is None:
             continue
         sr_ts = int(t.start_date.timestamp())
@@ -678,7 +676,6 @@ def cmd_upcoming(store: ThingsStore, args):
             store,
             indent="    ",
             show_today_markers=True,
-            show_someday_icon=False,
         )
 
     for task in tasks:
