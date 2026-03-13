@@ -203,10 +203,13 @@ class ThingsStore:
         self._markable_ids: set[str] = set()
         self._markable_ids_sorted: list[str] = []
 
+        self._area_ids_sorted: list[str] = []
+
         self._build(raw_state)
         self._build_project_progress_index()
         self._short_ids = _shortest_unique_prefixes(self._short_id_domain(raw_state))
         self._build_mark_indexes()
+        self._area_ids_sorted = sorted(self._areas.keys())
 
     def _build_project_progress_index(self) -> None:
         totals: dict[str, int] = {}
@@ -533,6 +536,44 @@ class ThingsStore:
                 max_need = max(max_need, 6)
         return max_need
 
+    @staticmethod
+    def _resolve_prefix(
+        identifier: str,
+        items: dict[str, object],
+        sorted_ids: list[str],
+        label: str = "Item",
+    ) -> tuple[object | None, str, list]:
+        """Generic prefix resolver for any UUID-keyed dict.
+
+        Returns ``(item, error_message, ambiguous_matches)``.
+        """
+        ident = identifier.strip()
+        if not ident:
+            return None, f"Missing {label.lower()} identifier.", []
+
+        exact = items.get(ident)
+        if exact:
+            return exact, "", []
+
+        start = bisect_left(sorted_ids, ident)
+        end = bisect_right(sorted_ids, ident + "\uffff")
+
+        match_count = end - start
+        if match_count == 1:
+            item = items.get(sorted_ids[start])
+            if item:
+                return item, "", []
+
+        if match_count > 1:
+            matches = [items[sorted_ids[i]] for i in range(start, min(end, start + 10))]
+            remaining = match_count - len(matches)
+            msg = f"Ambiguous {label.lower()} id prefix."
+            if remaining:
+                msg += f" ({match_count} matches, showing first {len(matches)})"
+            return None, msg, matches
+
+        return None, f"{label} not found: {identifier}", []
+
     def resolve_mark_identifier(
         self, identifier: str
     ) -> tuple[Optional[Task], str, list[Task]]:
@@ -543,33 +584,19 @@ class ThingsStore:
         On ambiguity *task* is ``None``, *error_message* describes the problem,
         and *ambiguous_matches* contains the conflicting tasks (up to 10).
         """
-        ident = identifier.strip()
-        if not ident:
-            return None, "Missing task identifier.", []
+        # _markable_ids is a subset of _tasks, so build a filtered view
+        markable = {uid: self._tasks[uid] for uid in self._markable_ids}
+        return self._resolve_prefix(
+            identifier, markable, self._markable_ids_sorted, label="Item"
+        )
 
-        exact = self._tasks.get(ident)
-        if exact and exact.uuid in self._markable_ids:
-            return exact, "", []
+    def resolve_area_identifier(
+        self, identifier: str
+    ) -> tuple[Optional[Area], str, list[Area]]:
+        """Resolve *identifier* (full UUID or short-id prefix) to an Area.
 
-        start = bisect_left(self._markable_ids_sorted, ident)
-        end = bisect_right(self._markable_ids_sorted, ident + "\uffff")
-
-        match_count = end - start
-        if match_count == 1:
-            matched_uuid = self._markable_ids_sorted[start]
-            task = self._tasks.get(matched_uuid)
-            if task:
-                return task, "", []
-
-        if match_count > 1:
-            matches = [
-                self._tasks[self._markable_ids_sorted[i]]
-                for i in range(start, min(end, start + 10))
-            ]
-            remaining = match_count - len(matches)
-            msg = "Ambiguous id prefix."
-            if remaining:
-                msg += f" ({match_count} matches, showing first {len(matches)})"
-            return None, msg, matches
-
-        return None, f"Item not found: {identifier}", []
+        Returns ``(area, error_message, ambiguous_matches)``.
+        """
+        return self._resolve_prefix(
+            identifier, self._areas, self._area_ids_sorted, label="Area"
+        )
