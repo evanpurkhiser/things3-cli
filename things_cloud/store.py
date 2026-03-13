@@ -182,6 +182,12 @@ class Task:
         return bool(self.recurrence_templates) and not self.recurrence_rule
 
 
+@dataclass(frozen=True)
+class ProjectProgress:
+    total: int = 0
+    done: int = 0
+
+
 class ThingsStore:
     """
     Builds and queries a current-state snapshot from raw history items.
@@ -192,13 +198,36 @@ class ThingsStore:
         self._areas: dict[str, Area] = {}
         self._tags: dict[str, Tag] = {}
         self._tag_by_title: dict[str, str] = {}  # title -> uuid
+        self._project_progress: dict[str, ProjectProgress] = {}
         self._short_ids: dict[str, str] = {}
         self._markable_ids: set[str] = set()
         self._markable_ids_sorted: list[str] = []
 
         self._build(raw_state)
+        self._build_project_progress_index()
         self._short_ids = _shortest_unique_prefixes(self._short_id_domain(raw_state))
         self._build_mark_indexes()
+
+    def _build_project_progress_index(self) -> None:
+        totals: dict[str, int] = {}
+        dones: dict[str, int] = {}
+
+        for task in self._tasks.values():
+            if task.trashed or not task.is_todo:
+                continue
+
+            project_uuid = self.effective_project_uuid(task)
+            if not project_uuid:
+                continue
+
+            totals[project_uuid] = totals.get(project_uuid, 0) + 1
+            if task.is_completed:
+                dones[project_uuid] = dones.get(project_uuid, 0) + 1
+
+        self._project_progress = {
+            project_uuid: ProjectProgress(total=total, done=dones.get(project_uuid, 0))
+            for project_uuid, total in totals.items()
+        }
 
     def _build_mark_indexes(self) -> None:
         markable = [
@@ -479,6 +508,9 @@ class ThingsStore:
 
     def short_id(self, uuid: str) -> str:
         return self._short_ids.get(uuid, uuid)
+
+    def project_progress(self, project_uuid: str) -> ProjectProgress:
+        return self._project_progress.get(project_uuid, ProjectProgress())
 
     def unique_prefix_length(self, ids: list[str]) -> int:
         """Return the column width needed so every displayed prefix is globally unique.

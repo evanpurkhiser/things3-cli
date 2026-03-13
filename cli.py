@@ -17,8 +17,9 @@ Usage:
 import argparse
 import getpass
 import sys
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Callable, Optional
 
 from things_cloud.client import ThingsCloudClient
 from things_cloud.auth import AuthConfigError, load_auth, write_auth
@@ -69,6 +70,12 @@ def _task_box(task: Task, show_someday_icon: bool = True) -> str:
 
 def _id_prefix(uuid: str, size: int) -> str:
     return colored(uuid[:size].ljust(size), DIM)
+
+
+@dataclass
+class AreaTaskGroup:
+    tasks: list[Task] = field(default_factory=list)
+    projects: dict[str, list[Task]] = field(default_factory=dict)
 
 
 def fmt_task_line(
@@ -165,7 +172,7 @@ def print_tasks_grouped(
 
     unscoped: list[Task] = []
     project_only: dict[str, list[Task]] = {}
-    by_area = {}
+    by_area: dict[str, AreaTaskGroup] = {}
 
     for task in tasks:
         project_uuid = store.effective_project_uuid(task)
@@ -174,8 +181,8 @@ def print_tasks_grouped(
         if project_uuid:
             if area_uuid:
                 if area_uuid not in by_area:
-                    by_area[area_uuid] = {"tasks": [], "projects": {}}
-                area_projects = by_area[area_uuid]["projects"]
+                    by_area[area_uuid] = AreaTaskGroup()
+                area_projects = by_area[area_uuid].projects
                 if project_uuid not in area_projects:
                     area_projects[project_uuid] = []
                 area_projects[project_uuid].append(task)
@@ -185,8 +192,8 @@ def print_tasks_grouped(
                 project_only[project_uuid].append(task)
         elif area_uuid:
             if area_uuid not in by_area:
-                by_area[area_uuid] = {"tasks": [], "projects": {}}
-            by_area[area_uuid]["tasks"].append(task)
+                by_area[area_uuid] = AreaTaskGroup()
+            by_area[area_uuid].tasks.append(task)
         else:
             unscoped.append(task)
 
@@ -195,7 +202,7 @@ def print_tasks_grouped(
         ids.extend(project_only.keys())
         ids.extend(area for area in by_area.keys() if area)
         for area_group in by_area.values():
-            ids.extend(area_group["projects"].keys())
+            ids.extend(area_group.projects.keys())
         id_prefix_len = store.unique_prefix_length(ids)
 
     any_printed = False
@@ -233,9 +240,9 @@ def print_tasks_grouped(
             f"{indent}{_id_prefix(area_uuid, id_prefix_len)} {colored(f'Area: {area_title}', BOLD)}"
         )
 
-        print_limited_tasks(area_group["tasks"], indent + "  ")
+        print_limited_tasks(area_group.tasks, indent + "  ")
 
-        for project_uuid, project_tasks in area_group["projects"].items():
+        for project_uuid, project_tasks in area_group.projects.items():
             print()
             project_title = store.resolve_project_title(project_uuid)
             print(
@@ -414,13 +421,9 @@ def _print_project(
     if project.in_someday:
         marker = "◌"
     else:
-        project_tasks = [
-            t
-            for t in store.tasks(status=None, trashed=False, type=0)
-            if store.effective_project_uuid(t) == project.uuid
-        ]
-        total = len(project_tasks)
-        done = sum(1 for t in project_tasks if t.is_completed)
+        progress = store.project_progress(project.uuid)
+        total = progress.total
+        done = progress.done
 
         if total == 0 or done == 0:
             marker = "◯"
@@ -686,17 +689,39 @@ def cmd_set_auth(_args):
     return 0
 
 
-COMMANDS = {
-    "set-auth": cmd_set_auth,
-    "today": cmd_today,
-    "anytime": cmd_anytime,
-    "inbox": cmd_inbox,
-    "projects": cmd_projects,
-    "areas": cmd_areas,
-    "tags": cmd_tags,
-    "upcoming": cmd_upcoming,
-    "mark": cmd_mark,
+CommandHandler = Callable[
+    [ThingsStore, argparse.Namespace, ThingsCloudClient], Optional[int]
+]
+StoreCommand = Callable[[ThingsStore, argparse.Namespace], None]
+
+
+def _adapt_store_command(command: StoreCommand) -> CommandHandler:
+    def handler(
+        store: ThingsStore, args: argparse.Namespace, _client: ThingsCloudClient
+    ) -> Optional[int]:
+        command(store, args)
+        return None
+
+    return handler
+
+
+def _run_mark(store: ThingsStore, args: argparse.Namespace, client: ThingsCloudClient):
+    cmd_mark(store, args, client)
+    return None
+
+
+COMMANDS: dict[str, CommandHandler] = {
+    "today": _adapt_store_command(cmd_today),
+    "anytime": _adapt_store_command(cmd_anytime),
+    "inbox": _adapt_store_command(cmd_inbox),
+    "projects": _adapt_store_command(cmd_projects),
+    "areas": _adapt_store_command(cmd_areas),
+    "tags": _adapt_store_command(cmd_tags),
+    "upcoming": _adapt_store_command(cmd_upcoming),
+    "mark": _run_mark,
 }
+
+SET_AUTH_COMMAND = "set-auth"
 
 
 # ---------------------------------------------------------------------------
@@ -708,11 +733,11 @@ def main():
     parser = argparse.ArgumentParser(
         description="things3: Command-line interface for Things 3 via Cloud API",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="\n".join(f"  {cmd}" for cmd in COMMANDS),
+        epilog="\n".join(f"  {cmd}" for cmd in [SET_AUTH_COMMAND, *COMMANDS]),
     )
     parser.add_argument(
         "command",
-        choices=list(COMMANDS.keys()),
+        choices=[SET_AUTH_COMMAND, *COMMANDS],
         help="Command to run",
     )
     parser.add_argument(
@@ -743,8 +768,8 @@ def main():
 
     args = parser.parse_args()
 
-    if args.command == "set-auth":
-        rc = COMMANDS[args.command](args)
+    if args.command == SET_AUTH_COMMAND:
+        rc = cmd_set_auth(args)
         if rc:
             sys.exit(rc)
         return
@@ -771,10 +796,9 @@ def main():
     store = ThingsStore(raw)
 
     # Dispatch
-    if args.command == "mark":
-        COMMANDS[args.command](store, args, client)
-    else:
-        COMMANDS[args.command](store, args)
+    rc = COMMANDS[args.command](store, args, client)
+    if rc:
+        sys.exit(rc)
 
 
 if __name__ == "__main__":
