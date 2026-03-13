@@ -481,20 +481,24 @@ class ThingsStore:
         return self._short_ids.get(uuid, uuid)
 
     def unique_prefix_length(self, ids: list[str]) -> int:
+        """Return the column width needed so every displayed prefix is globally unique.
+
+        Uses the precomputed globally-unique short IDs (unique across all
+        non-tombstone entities) so that any prefix shown in a view will
+        resolve unambiguously when passed to ``mark``.
+        """
         if not ids:
             return 0
 
-        ordered = sorted(ids)
-        if len(ordered) == 1:
-            return 1
-
         max_need = 1
-        for i, value in enumerate(ordered):
-            left = _lcp_len(value, ordered[i - 1]) if i > 0 else 0
-            right = _lcp_len(value, ordered[i + 1]) if i + 1 < len(ordered) else 0
-            need = max(left, right) + 1
-            if need > max_need:
-                max_need = need
+        for uid in ids:
+            short = self._short_ids.get(uid)
+            if short is not None:
+                max_need = max(max_need, len(short))
+            else:
+                # ID not in the global domain (shouldn't happen); fall back
+                # to showing enough to be reasonably identifiable.
+                max_need = max(max_need, 6)
         return max_need
 
     def resolve_mark_identifier(self, identifier: str) -> tuple[Optional[Task], str]:
