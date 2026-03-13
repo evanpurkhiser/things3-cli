@@ -160,6 +160,7 @@ def sync_append_log(client: ThingsCloudClient, cache_dir: Path) -> None:
                 items = page.get("items", [])
                 end = page.get("end-total-content-size", 0)
                 latest = page.get("latest-total-content-size", 0)
+                client.head_index = page.get("current-item-index", client.head_index)
 
                 for item in items:
                     fp.write(json.dumps(item, separators=(",", ":")) + "\n")
