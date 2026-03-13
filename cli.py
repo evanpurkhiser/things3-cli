@@ -59,17 +59,43 @@ def fmt_date(dt: Optional[datetime]) -> str:
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%d")
 
 
+def _task_box(task: Task, show_someday_icon: bool = True) -> str:
+    if task.is_completed:
+        return "◼"
+    if show_someday_icon and task.in_someday:
+        return "⬚"
+    return "▢"
+
+
+def _view_unique_prefix_len(ids: list[str]) -> int:
+    if not ids:
+        return 0
+    max_len = max(len(value) for value in ids)
+    for size in range(1, max_len + 1):
+        prefixes = {value[:size] for value in ids}
+        if len(prefixes) == len(ids):
+            return size
+    return max_len
+
+
+def _id_prefix(uuid: str, size: int) -> str:
+    return colored(uuid[:size].ljust(size), DIM)
+
+
 def fmt_task_line(
     task: Task,
     store: ThingsStore,
     show_project: bool = False,
     show_today_markers: bool = False,
+    show_someday_icon: bool = True,
+    id_prefix_len: Optional[int] = None,
 ) -> str:
     """Format a single task for terminal output."""
     parts = []
 
     # Checkbox
-    parts.append(colored("○", DIM))
+    box = _task_box(task, show_someday_icon=show_someday_icon)
+    parts.append(colored(box, DIM))
 
     if show_today_markers:
         if task.evening:
@@ -99,7 +125,10 @@ def fmt_task_line(
         color = RED if overdue else YELLOW
         parts.append(colored(f" ⚑ due by {fmt_date(task.deadline)}", color))
 
-    return " ".join(parts) if parts else title
+    line = " ".join(parts) if parts else title
+    if id_prefix_len and id_prefix_len > 0:
+        return f"{_id_prefix(task.uuid, id_prefix_len)} {line}"
+    return line
 
 
 def print_section(
@@ -118,6 +147,8 @@ def print_tasks_grouped(
     store: ThingsStore,
     indent: str = "  ",
     show_today_markers: bool = False,
+    show_someday_icon: bool = True,
+    id_prefix_len: Optional[int] = None,
 ):
     """Print tasks grouped by area and project, preserving first-seen order."""
     max_group_items = 3
@@ -132,6 +163,8 @@ def print_tasks_grouped(
                     store,
                     show_project=False,
                     show_today_markers=show_today_markers,
+                    show_someday_icon=show_someday_icon,
+                    id_prefix_len=id_prefix_len,
                 )
             )
         hidden = len(group_tasks) - len(shown)
@@ -168,6 +201,14 @@ def print_tasks_grouped(
         else:
             unscoped.append(task)
 
+    if id_prefix_len is None:
+        ids = [task.uuid for task in tasks]
+        ids.extend(project_only.keys())
+        ids.extend(area for area in by_area.keys() if area)
+        for area_group in by_area.values():
+            ids.extend(area_group["projects"].keys())
+        id_prefix_len = _view_unique_prefix_len(ids)
+
     any_printed = False
 
     if unscoped:
@@ -179,6 +220,8 @@ def print_tasks_grouped(
                     store,
                     show_project=False,
                     show_today_markers=show_today_markers,
+                    show_someday_icon=show_someday_icon,
+                    id_prefix_len=id_prefix_len,
                 )
             )
         any_printed = True
@@ -187,7 +230,9 @@ def print_tasks_grouped(
         if any_printed:
             print()
         title = store.resolve_project_title(project_uuid)
-        print(colored(f"{indent}Project: {title}", BOLD))
+        print(
+            f"{indent}{_id_prefix(project_uuid, id_prefix_len)} {colored(f'Project: {title}', BOLD)}"
+        )
         print_limited_tasks(project_tasks, indent + "  ")
         any_printed = True
 
@@ -195,14 +240,19 @@ def print_tasks_grouped(
         if any_printed:
             print()
         area_title = store.resolve_area_title(area_uuid)
-        print(colored(f"{indent}Area: {area_title}", BOLD))
+        print(
+            f"{indent}{_id_prefix(area_uuid, id_prefix_len)} {colored(f'Area: {area_title}', BOLD)}"
+        )
 
         print_limited_tasks(area_group["tasks"], indent + "  ")
 
         for project_uuid, project_tasks in area_group["projects"].items():
             print()
             project_title = store.resolve_project_title(project_uuid)
-            print(colored(f"{indent}  Project: {project_title}", BOLD))
+            print(
+                f"{indent}  {_id_prefix(project_uuid, id_prefix_len)} "
+                + colored(f"Project: {project_title}", BOLD)
+            )
             print_limited_tasks(project_tasks, indent + "    ")
         any_printed = True
 
@@ -215,24 +265,86 @@ def print_tasks_grouped(
 def cmd_today(store: ThingsStore, args):
     """Show Today view."""
     tasks = store.today()
+    today_items = [
+        t
+        for t in store.tasks(status=0, trashed=False)
+        if not t.is_heading
+        and t.title.strip()
+        and t.entity == "Task6"
+        and (t.is_today or t.evening)
+    ]
 
-    if not tasks:
+    def _today_sort_key(task: Task):
+        tir = task.today_index_reference or 0
+        return (-tir, task.today_index, -task.index)
+
+    today_items = sorted(today_items, key=_today_sort_key)
+
+    if not today_items:
         print(colored("No tasks for today.", DIM))
         return
 
-    regular = [t for t in tasks if not t.evening]
-    evening = [t for t in tasks if t.evening]
+    regular = [t for t in today_items if not t.evening]
+    evening = [t for t in today_items if t.evening]
+    project_count = sum(1 for t in today_items if t.is_project)
+    id_prefix_len = _view_unique_prefix_len([item.uuid for item in today_items])
 
-    print(colored(f"★ Today  ({len(tasks)} tasks)", BOLD + YELLOW))
+    if project_count:
+        project_label = "project" if project_count == 1 else "projects"
+        print(
+            colored(
+                f"★ Today  ({len(tasks)} tasks, {project_count} {project_label})",
+                BOLD + YELLOW,
+            )
+        )
+    else:
+        print(colored(f"★ Today  ({len(tasks)} tasks)", BOLD + YELLOW))
 
     if regular:
         print()
-        print_tasks_grouped(regular, store, indent="  ")
+        for item in regular:
+            if item.is_project:
+                _print_project(
+                    item,
+                    store,
+                    indent=2,
+                    show_indicators=False,
+                    id_prefix_len=id_prefix_len,
+                )
+            else:
+                print(
+                    "  "
+                    + fmt_task_line(
+                        item,
+                        store,
+                        show_today_markers=False,
+                        id_prefix_len=id_prefix_len,
+                    )
+                )
 
     if evening:
         print()
-        print(colored("  ☽ This Evening", BOLD + BLUE))
-        print_tasks_grouped(evening, store, indent="  ")
+        print(colored("☽ This Evening", BOLD + BLUE))
+        print()
+        for item in evening:
+            if item.is_project:
+                _print_project(
+                    item,
+                    store,
+                    indent=2,
+                    show_indicators=False,
+                    id_prefix_len=id_prefix_len,
+                )
+            else:
+                print(
+                    "  "
+                    + fmt_task_line(
+                        item,
+                        store,
+                        show_today_markers=False,
+                        id_prefix_len=id_prefix_len,
+                    )
+                )
 
 
 def cmd_inbox(store: ThingsStore, args):
@@ -279,22 +391,33 @@ def cmd_projects(store: ThingsStore, args):
             by_area[key] = []
         by_area[key].append(p)
 
+    id_scope = [p.uuid for p in projects]
+    id_scope.extend(area_uuid for area_uuid in by_area.keys() if area_uuid)
+    id_prefix_len = _view_unique_prefix_len(id_scope)
+
     # No-area projects first
     no_area = by_area.pop(None, [])
     if no_area:
         print()
         for p in no_area:
-            _print_project(p, store)
+            _print_project(p, store, id_prefix_len=id_prefix_len)
 
     for area_uuid, area_projects in by_area.items():
         area_title = store.resolve_area_title(area_uuid) if area_uuid else "?"
         print()
-        print(colored(f"  {area_title}", BOLD))
+        area_id = _id_prefix(area_uuid, id_prefix_len) if area_uuid else "?"
+        print(f"  {area_id} {colored(area_title, BOLD)}")
         for p in area_projects:
-            _print_project(p, store, indent=4)
+            _print_project(p, store, indent=4, id_prefix_len=id_prefix_len)
 
 
-def _print_project(project: Task, store: ThingsStore, indent: int = 2):
+def _print_project(
+    project: Task,
+    store: ThingsStore,
+    indent: int = 2,
+    show_indicators: bool = True,
+    id_prefix_len: Optional[int] = None,
+):
     prefix = " " * indent
     title = project.title or colored("(untitled)", DIM)
     dl = colored(f" ⚑ {fmt_date(project.deadline)}", YELLOW) if project.deadline else ""
@@ -323,7 +446,15 @@ def _print_project(project: Task, store: ThingsStore, indent: int = 2):
             else:
                 marker = "◕"
 
-    print(f"{prefix}{colored(marker, DIM)} {title}{dl}")
+    status_marker = ""
+    if show_indicators:
+        if project.evening:
+            status_marker = f" {colored('☽', BLUE)}"
+        elif project.is_today:
+            status_marker = f" {colored('★', YELLOW)}"
+
+    id_part = f"{_id_prefix(project.uuid, id_prefix_len)} " if id_prefix_len else ""
+    print(f"{prefix}{id_part}{colored(marker, DIM)}{status_marker} {title}{dl}")
 
 
 def cmd_areas(store: ThingsStore, args):
@@ -336,12 +467,18 @@ def cmd_areas(store: ThingsStore, args):
 
     print(colored(f"⬡ Areas  ({len(areas)})", BOLD + MAGENTA))
     print()
+
+    id_prefix_len = _view_unique_prefix_len([area.uuid for area in areas])
+
     for area in areas:
         tags = ""
         if area.tags:
             tag_names = [store.resolve_tag_title(t) for t in area.tags]
             tags = colored("  [" + ", ".join(tag_names) + "]", DIM)
-        print(f"  {colored('⬡', DIM)} {area.title}{tags}")
+        print(
+            f"  {_id_prefix(area.uuid, id_prefix_len)} "
+            f"{colored('⬡', DIM)} {area.title}{tags}"
+        )
 
 
 def cmd_tags(store: ThingsStore, args):
@@ -396,6 +533,7 @@ def cmd_upcoming(store: ThingsStore, args):
             store,
             indent="    ",
             show_today_markers=True,
+            show_someday_icon=False,
         )
 
     for task in tasks:

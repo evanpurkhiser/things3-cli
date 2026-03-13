@@ -32,6 +32,30 @@ RECURRENCE_FIXED_SCHEDULE = RecurrenceType.FIXED_SCHEDULE
 RECURRENCE_AFTER_COMPLETION = RecurrenceType.AFTER_COMPLETION
 
 
+def _lcp_len(a: str, b: str) -> int:
+    limit = min(len(a), len(b))
+    i = 0
+    while i < limit and a[i] == b[i]:
+        i += 1
+    return i
+
+
+def _shortest_unique_prefixes(ids: list[str]) -> dict[str, str]:
+    if not ids:
+        return {}
+
+    ordered = sorted(ids)
+    result: dict[str, str] = {}
+
+    for i, value in enumerate(ordered):
+        left = _lcp_len(value, ordered[i - 1]) if i > 0 else 0
+        right = _lcp_len(value, ordered[i + 1]) if i + 1 < len(ordered) else 0
+        need = max(left, right) + 1
+        result[value] = value[:need]
+
+    return result
+
+
 def _ts_to_dt(ts) -> Optional[datetime]:
     if ts is None:
         return None
@@ -167,8 +191,25 @@ class ThingsStore:
         self._areas: dict[str, Area] = {}
         self._tags: dict[str, Tag] = {}
         self._tag_by_title: dict[str, str] = {}  # title -> uuid
+        self._short_ids: dict[str, str] = {}
 
         self._build(raw_state)
+        self._short_ids = _shortest_unique_prefixes(self._short_id_domain(raw_state))
+
+    def _short_id_domain(self, raw_state: dict[str, dict]) -> list[str]:
+        ids: list[str] = []
+        for uuid, obj in raw_state.items():
+            entity = ""
+            if isinstance(obj, dict):
+                entity = obj.get("e", "")
+
+            if entity in {"Tombstone", "Tombstone2"}:
+                continue
+            if isinstance(uuid, str) and uuid.startswith("TOMBSTONE-"):
+                continue
+
+            ids.append(uuid)
+        return ids
 
     def _build(self, raw_state: dict[str, dict]):
         for uuid, obj in raw_state.items():
@@ -421,3 +462,6 @@ class ThingsStore:
         if not uuid:
             return "(project)"
         return f"(project {uuid[:8]})"
+
+    def short_id(self, uuid: str) -> str:
+        return self._short_ids.get(uuid, uuid)
