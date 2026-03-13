@@ -39,7 +39,7 @@ $ things3 today
 - [x] Cache folded state and history key for fast startup (~450ms vs ~1500ms)
 - [ ] Mark multiple tasks at once (`mark --done <id1> <id2> ...`)
 - [ ] Show task details (notes, checklist items)
-- [ ] `add` — create tasks/projects with title, notes, tags, project, area, dates
+- [ ] `add` — create tasks/projects with title, notes, tags, checklist items, project, area, dates
 - [ ] `edit` — modify existing tasks/projects
   - [ ] Rename (title)
   - [ ] Set/remove tags
@@ -53,7 +53,7 @@ $ things3 today
 - [ ] Show `someday` list and `logbook` (completed tasks with date filtering)
 - [ ] Heading management — create/rename/delete/reorder headings within projects
 - [ ] `find` / filters (title, tag, area, project, status, date range)
-- [ ] Machine-readable output (`--json`) for scripting and LLM/tool use
+- [ ] Machine-readable output (`--json`, `--toon`) for scripting and LLM/tool use
 
 ## Install
 
