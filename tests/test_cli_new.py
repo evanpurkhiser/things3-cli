@@ -33,6 +33,40 @@ def _today_ts() -> int:
 
 
 class CmdNewTests(unittest.TestCase):
+    def test_new_without_position_defaults_to_top_of_target_list(self) -> None:
+        state = {
+            "task-first-000": {
+                "e": "Task6",
+                "p": {"tt": "First", "ss": 0, "st": 0, "ix": 100},
+            },
+            "task-second-00": {
+                "e": "Task6",
+                "p": {"tt": "Second", "ss": 0, "st": 0, "ix": 200},
+            },
+        }
+        store = ThingsStore(state)
+        client = _FakeClient()
+        args = argparse.Namespace(
+            title="New task",
+            in_target="inbox",
+            when=None,
+            notes="",
+            tags=None,
+            before_id=None,
+            after_id=None,
+        )
+
+        out = io.StringIO()
+        err = io.StringIO()
+        with patch("cli.random_task_id", return_value="task-new-000"):
+            with redirect_stdout(out), redirect_stderr(err):
+                cli.cmd_new(store, args, cast(Any, client))
+
+        self.assertEqual(err.getvalue(), "")
+        self.assertEqual(len(client.create_calls), 1)
+        _task_uuid, props, _entity = client.create_calls[0]
+        self.assertEqual(props["ix"], 99)
+
     def test_new_after_inbox_anchor_uses_single_commit_with_position(self) -> None:
         state = {
             "task-anchor-0": {
@@ -151,6 +185,61 @@ class CmdNewTests(unittest.TestCase):
         self.assertEqual(props["ti"], 11)
         self.assertEqual(props["tir"], day_ts)
         self.assertEqual(props["sb"], 1)
+
+    def test_new_in_project_today_sets_structural_and_today_indexes(self) -> None:
+        day_ts = _today_ts()
+        state = {
+            "project-000000": {
+                "e": "Task6",
+                "p": {"tt": "Project", "tp": 1, "ss": 0, "st": 1, "ix": 10},
+            },
+            "task-project-1": {
+                "e": "Task6",
+                "p": {
+                    "tt": "Project task",
+                    "ss": 0,
+                    "st": 1,
+                    "pr": ["project-000000"],
+                    "ix": 300,
+                },
+            },
+            "task-today-001": {
+                "e": "Task6",
+                "p": {
+                    "tt": "Today task",
+                    "ss": 0,
+                    "st": 1,
+                    "sr": day_ts,
+                    "tir": day_ts,
+                    "ti": 50,
+                    "ix": 100,
+                },
+            },
+        }
+        store = ThingsStore(state)
+        client = _FakeClient()
+        args = argparse.Namespace(
+            title="New project task",
+            in_target="project-000000",
+            when="today",
+            notes="",
+            tags=None,
+            before_id=None,
+            after_id=None,
+        )
+
+        out = io.StringIO()
+        err = io.StringIO()
+        with patch("cli.random_task_id", return_value="task-new-000"):
+            with redirect_stdout(out), redirect_stderr(err):
+                cli.cmd_new(store, args, cast(Any, client))
+
+        self.assertEqual(err.getvalue(), "")
+        self.assertEqual(len(client.create_calls), 1)
+        _task_uuid, props, _entity = client.create_calls[0]
+        self.assertEqual(props["ix"], 299)
+        self.assertEqual(props["tir"], day_ts)
+        self.assertEqual(props["ti"], 49)
 
 
 if __name__ == "__main__":
