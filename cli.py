@@ -4,7 +4,7 @@ things-cli: A command-line interface for Things 3 via the Things Cloud API.
 
 Usage:
     things3 set-auth
-    things3 new <title> [--in inbox|<project/area-id>] [--when today|YYYY-MM-DD] [--notes TEXT] [--tags tag1,tag2]
+    things3 new <title> [--in inbox|<project/area-id>] [--when today|YYYY-MM-DD] [--before <id> | --after <id>] [--notes TEXT] [--tags tag1,tag2]
     things3 today
     things3 anytime
     things3 someday
@@ -908,6 +908,25 @@ def cmd_new(store: ThingsStore, args, client: ThingsCloudClient):
         }
     )
 
+    anchor = None
+    anchor_id = args.before_id if args.before_id else args.after_id
+    if anchor_id:
+        anchor, err, ambiguous = store.resolve_task_identifier(anchor_id)
+        if not anchor:
+            print(err, file=sys.stderr)
+            if ambiguous:
+                id_prefix_len = store.unique_prefix_length([t.uuid for t in ambiguous])
+                for match in ambiguous:
+                    if match.is_project:
+                        print(
+                            f"  {fmt_project_line(match, store, id_prefix_len=id_prefix_len)}"
+                        )
+                    else:
+                        print(
+                            f"  {fmt_task_line(match, store, show_project=True, id_prefix_len=id_prefix_len)}"
+                        )
+            return
+
     in_target = (args.in_target or "inbox").strip()
     if in_target.lower() != "inbox":
         project, _perr, _pamb = store.resolve_mark_identifier(in_target)
@@ -980,9 +999,142 @@ def cmd_new(store: ThingsStore, args, client: ThingsCloudClient):
             return
         props["tg"] = tag_ids
 
+    index_updates: list[tuple[str, int, str]] = []
+    if anchor:
+
+        def _is_today_from_props(task_props: dict) -> bool:
+            if task_props.get("st") != TaskStart.ANYTIME:
+                return False
+            sr = task_props.get("sr")
+            if sr is None:
+                return False
+            today_ts = _day_to_timestamp(
+                datetime.now(tz=timezone.utc).replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                )
+            )
+            return int(sr) <= today_ts
+
+        def _task_bucket(task: Task) -> tuple:
+            if task.is_heading:
+                return ("heading", task.project or "")
+            if task.is_project:
+                return ("project", task.area or "")
+
+            project_uuid = store.effective_project_uuid(task)
+            if project_uuid:
+                return ("task-project", project_uuid, task.action_group or "")
+
+            area_uuid = store.effective_area_uuid(task)
+            if area_uuid:
+                return ("task-area", area_uuid, task.start)
+
+            return ("task-root", task.start)
+
+        def _props_bucket(task_props: dict) -> tuple:
+            project_uuid = None
+            if task_props.get("pr"):
+                project_uuid = task_props["pr"][0]
+            if project_uuid:
+                return ("task-project", project_uuid, "")
+
+            area_uuid = None
+            if task_props.get("ar"):
+                area_uuid = task_props["ar"][0]
+            if area_uuid:
+                return ("task-area", area_uuid, task_props.get("st", TaskStart.INBOX))
+
+            return ("task-root", task_props.get("st", TaskStart.INBOX))
+
+        new_is_today = _is_today_from_props(props)
+        anchor_is_today = anchor.start == TaskStart.ANYTIME and (
+            anchor.is_today or anchor.evening
+        )
+
+        if new_is_today and anchor_is_today:
+            today_ts = _day_to_timestamp(
+                datetime.now(tz=timezone.utc).replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                )
+            )
+            anchor_tir = (
+                anchor.today_index_reference
+                if anchor.today_index_reference is not None
+                else (
+                    _day_to_timestamp(anchor.start_date)
+                    if anchor.start_date is not None
+                    else today_ts
+                )
+            )
+            props["tir"] = anchor_tir
+            props["ti"] = (
+                anchor.today_index - 1 if args.before_id else anchor.today_index + 1
+            )
+            props["sb"] = 1 if anchor.evening else 0
+        else:
+            item_bucket = _props_bucket(props)
+            anchor_bucket = _task_bucket(anchor)
+            if item_bucket != anchor_bucket:
+                print(
+                    "Cannot place new task relative to an item in a different container/list.",
+                    file=sys.stderr,
+                )
+                return
+
+            siblings = [
+                t
+                for t in store._tasks.values()
+                if not t.trashed
+                and t.status == TaskStatus.INCOMPLETE
+                and _task_bucket(t) == item_bucket
+            ]
+            siblings.sort(key=lambda t: (t.index, t.uuid))
+            if not any(t.uuid == anchor.uuid for t in siblings):
+                print("Anchor not found in target list.", file=sys.stderr)
+                return
+
+            order = [t for t in siblings]
+            anchor_pos = next(i for i, t in enumerate(order) if t.uuid == anchor.uuid)
+            insert_at = anchor_pos if args.before_id else anchor_pos + 1
+
+            prev_ix = order[insert_at - 1].index if insert_at > 0 else None
+            next_ix = order[insert_at].index if insert_at < len(order) else None
+            new_index = 0
+
+            if prev_ix is None and next_ix is None:
+                new_index = 0
+            elif prev_ix is None:
+                assert next_ix is not None
+                new_index = next_ix - 1
+            elif next_ix is None:
+                new_index = prev_ix + 1
+            elif prev_ix + 1 < next_ix:
+                new_index = (prev_ix + next_ix) // 2
+            else:
+                stride = 1024
+                ordered_with_new = order[:insert_at] + [None] + order[insert_at:]
+                for idx, entry in enumerate(ordered_with_new, start=1):
+                    target_ix = idx * stride
+                    if entry is None:
+                        new_index = target_ix
+                        continue
+                    if entry.index != target_ix:
+                        index_updates.append((entry.uuid, target_ix, entry.entity))
+
+            props["ix"] = new_index
+
     new_uuid = random_task_id()
     try:
-        client.create_task(new_uuid, props, entity="Task6")
+        if anchor:
+            changes = {new_uuid: {"t": 0, "e": "Task6", "p": props}}
+            for task_uuid, task_index, task_entity in index_updates:
+                changes[task_uuid] = {
+                    "e": task_entity,
+                    "p": {"ix": task_index, "md": now_ts},
+                }
+            client.commit(changes)
+        else:
+            client.create_task(new_uuid, props, entity="Task6")
     except Exception as e:
         print(f"Failed to create task: {e}", file=sys.stderr)
         return
@@ -1527,6 +1679,17 @@ def main():
     new_parser.add_argument(
         "--when",
         help="Schedule: anytime, someday, today, or YYYY-MM-DD",
+    )
+    new_position_group = new_parser.add_mutually_exclusive_group()
+    new_position_group.add_argument(
+        "--before",
+        dest="before_id",
+        help="Place new task before this task/project/heading UUID/prefix",
+    )
+    new_position_group.add_argument(
+        "--after",
+        dest="after_id",
+        help="Place new task after this task/project/heading UUID/prefix",
     )
     new_parser.add_argument(
         "--notes",
