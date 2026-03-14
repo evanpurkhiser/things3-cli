@@ -132,10 +132,10 @@ class ThingsCloudClient:
             f"{BASE_URL}/history/{self.history_key}/commit?ancestor-index={idx}&_cnt=1"
         )
 
-        # Flatten to wire format: { uuid: { "t": 1, "e": ..., "p": ... } }
+        # Flatten to wire format: { uuid: { "t": op, "e": ..., "p": ... } }
         payload = {}
         for uuid, obj in changes.items():
-            payload[uuid] = {"t": 1, "e": obj["e"], "p": obj["p"]}
+            payload[uuid] = {"t": obj.get("t", 1), "e": obj["e"], "p": obj["p"]}
 
         result = self._request(
             "POST",
@@ -208,3 +208,7 @@ class ThingsCloudClient:
         """Mark task as canceled."""
         now = time.time()
         return self.set_task_status(task_uuid, status=2, entity=entity, stop_date=now)
+
+    def create_task(self, task_uuid: str, props: dict, entity: str = "Task6") -> int:
+        """Create a new task/project entity via full snapshot write (t=0)."""
+        return self.commit({task_uuid: {"t": 0, "e": entity, "p": props}})

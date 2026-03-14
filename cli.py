@@ -4,6 +4,7 @@ things-cli: A command-line interface for Things 3 via the Things Cloud API.
 
 Usage:
     things3 set-auth
+    things3 new <title> [--in inbox|<project/area-id>] [--when today|YYYY-MM-DD] [--notes TEXT] [--tags tag1,tag2]
     things3 today
     things3 anytime
     things3 someday
@@ -20,14 +21,17 @@ import argparse
 import getpass
 import sys
 import time
-from dataclasses import dataclass, field
+import zlib
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Callable, Optional
 
 from things_cloud.client import ThingsCloudClient
 from things_cloud.auth import AuthConfigError, load_auth, write_auth
+from things_cloud.ids import random_task_id
 from things_cloud.log_cache import get_state_with_append_log
 from things_cloud.store import ThingsStore, Task, Area, Tag
+from things_cloud.schema import TaskProps, TaskStart, TaskStatus, TaskType
 
 RECURRENCE_FIXED_SCHEDULE = 0
 RECURRENCE_AFTER_COMPLETION = 1
@@ -102,6 +106,12 @@ def fmt_date(dt: Optional[datetime]) -> str:
     if dt is None:
         return ""
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%d")
+
+
+def _task6_note(value: str) -> dict:
+    payload = value or ""
+    checksum = zlib.crc32(payload.encode("utf-8")) & 0xFFFFFFFF
+    return {"_t": "tx", "t": 1, "ch": checksum, "v": payload}
 
 
 def _task_box(task: Task) -> str:
@@ -834,6 +844,150 @@ def cmd_project(store: ThingsStore, args):
             )
 
 
+def _resolve_tag_ids(store: ThingsStore, raw_tags: str) -> tuple[list[str], str]:
+    tokens = [part.strip() for part in raw_tags.split(",") if part.strip()]
+    if not tokens:
+        return [], ""
+
+    all_tags = store.tags()
+    resolved: list[str] = []
+    seen: set[str] = set()
+
+    for token in tokens:
+        token_l = token.lower()
+
+        exact = [tag for tag in all_tags if tag.title.lower() == token_l]
+        if len(exact) == 1:
+            tag_uuid = exact[0].uuid
+            if tag_uuid not in seen:
+                seen.add(tag_uuid)
+                resolved.append(tag_uuid)
+            continue
+        if len(exact) > 1:
+            return [], f"Ambiguous tag title: {token}"
+
+        prefix = [tag for tag in all_tags if tag.uuid.startswith(token)]
+        if len(prefix) == 1:
+            tag_uuid = prefix[0].uuid
+            if tag_uuid not in seen:
+                seen.add(tag_uuid)
+                resolved.append(tag_uuid)
+            continue
+        if len(prefix) > 1:
+            return [], f"Ambiguous tag UUID prefix: {token}"
+
+        return [], f"Tag not found: {token}"
+
+    return resolved, ""
+
+
+def cmd_new(store: ThingsStore, args, client: ThingsCloudClient):
+    """Create a new task with optional container, schedule, notes, and tags."""
+    title = args.title.strip()
+    if not title:
+        print("Task title cannot be empty.", file=sys.stderr)
+        return
+
+    now_ts = time.time()
+    props = asdict(TaskProps())
+    props.update(
+        {
+            "tt": title,
+            "tp": TaskType.TODO,
+            "ss": TaskStatus.INCOMPLETE,
+            "st": TaskStart.INBOX,
+            "tr": False,
+            "cd": now_ts,
+            "md": now_ts,
+            "nt": _task6_note(args.notes) if args.notes else None,
+            "xx": {"_t": "oo", "sn": {}},
+            "rmd": None,
+            "rp": None,
+        }
+    )
+
+    in_target = (args.in_target or "inbox").strip()
+    if in_target.lower() != "inbox":
+        project, _perr, _pamb = store.resolve_mark_identifier(in_target)
+        area, _aerr, _aamb = store.resolve_area_identifier(in_target)
+
+        project_uuid = project.uuid if project and project.is_project else None
+        area_uuid = area.uuid if area else None
+
+        if project_uuid and area_uuid:
+            print(
+                f"Ambiguous --in target '{in_target}' (matches project and area).",
+                file=sys.stderr,
+            )
+            return
+        if project and not project.is_project:
+            print(
+                "--in target must be inbox, a project ID, or an area ID.",
+                file=sys.stderr,
+            )
+            return
+        if project_uuid:
+            props["pr"] = [project_uuid]
+            props["st"] = TaskStart.ANYTIME
+        elif area_uuid:
+            props["ar"] = [area_uuid]
+            props["st"] = TaskStart.ANYTIME
+        else:
+            print(f"Container not found: {in_target}", file=sys.stderr)
+            return
+
+    when_raw = (args.when or "").strip()
+    if when_raw:
+        when_l = when_raw.lower()
+        if when_l == "anytime":
+            props["st"] = TaskStart.ANYTIME
+            props["sr"] = None
+        elif when_l == "someday":
+            props["st"] = TaskStart.SOMEDAY
+            props["sr"] = None
+        elif when_l == "today":
+            day = datetime.now(tz=timezone.utc).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+            props["st"] = TaskStart.ANYTIME
+            props["sr"] = int(day.timestamp())
+            props["tir"] = int(day.timestamp())
+        else:
+            try:
+                day = _parse_day(when_raw, "--when")
+            except ValueError as e:
+                print(str(e), file=sys.stderr)
+                return
+            if day is None:
+                print(
+                    "--when requires anytime, someday, today, or YYYY-MM-DD",
+                    file=sys.stderr,
+                )
+                return
+            # Observed cloud state often models future specific dates as
+            # st=Someday with sr/tir pinned to the same day.
+            day_ts = int(day.timestamp())
+            props["st"] = TaskStart.SOMEDAY
+            props["sr"] = day_ts
+            props["tir"] = day_ts
+
+    if args.tags:
+        tag_ids, tag_err = _resolve_tag_ids(store, args.tags)
+        if tag_err:
+            print(tag_err, file=sys.stderr)
+            return
+        props["tg"] = tag_ids
+
+    new_uuid = random_task_id()
+    try:
+        client.create_task(new_uuid, props, entity="Task6")
+    except Exception as e:
+        print(f"Failed to create task: {e}", file=sys.stderr)
+        return
+
+    print(colored(f"{ICONS.done} Created", GREEN), f"{title}  {colored(new_uuid, DIM)}")
+
+
 def _validate_recurring_done(task: Task, store: ThingsStore) -> tuple[bool, str]:
     """Validate whether recurring completion can be done safely.
 
@@ -1019,7 +1173,13 @@ def _run_mark(store: ThingsStore, args: argparse.Namespace, client: ThingsCloudC
     return None
 
 
+def _run_new(store: ThingsStore, args: argparse.Namespace, client: ThingsCloudClient):
+    cmd_new(store, args, client)
+    return None
+
+
 COMMANDS: dict[str, CommandHandler] = {
+    "new": _run_new,
     "today": _adapt_store_command(cmd_today),
     "anytime": _adapt_store_command(cmd_anytime),
     "someday": _adapt_store_command(cmd_someday),
@@ -1053,6 +1213,28 @@ def main():
     )
 
     subparsers = parser.add_subparsers(dest="command")
+
+    new_parser = subparsers.add_parser("new", help="Create a new task")
+    new_parser.add_argument("title", help="Task title")
+    new_parser.add_argument(
+        "--in",
+        dest="in_target",
+        default="inbox",
+        help="Container: inbox (default), project UUID/prefix, or area UUID/prefix",
+    )
+    new_parser.add_argument(
+        "--when",
+        help="Schedule: anytime, someday, today, or YYYY-MM-DD",
+    )
+    new_parser.add_argument(
+        "--notes",
+        default="",
+        help="Task notes",
+    )
+    new_parser.add_argument(
+        "--tags",
+        help="Comma-separated tags (titles or UUID prefixes)",
+    )
 
     # View commands (no extra args)
     subparsers.add_parser("today", help="Show the Today view (default)")

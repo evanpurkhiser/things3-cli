@@ -4,71 +4,27 @@ from __future__ import annotations
 
 import json
 import os
-import re
-import hashlib
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
 import fcntl
 from pathlib import Path
 from urllib.error import HTTPError
-from uuid import UUID
 
 from things_cloud.client import ThingsCloudClient
 from things_cloud.dirs import append_log_dir
-
-
-_BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-_UUID_RE = re.compile(
-    r"^[0-9a-fA-F]{8}-"
-    r"[0-9a-fA-F]{4}-"
-    r"[0-9a-fA-F]{4}-"
-    r"[0-9a-fA-F]{4}-"
-    r"[0-9a-fA-F]{12}$"
-)
-
-
-def _base58_encode(raw: bytes) -> str:
-    if not raw:
-        return ""
-
-    zeros = 0
-    for b in raw:
-        if b == 0:
-            zeros += 1
-        else:
-            break
-
-    num = int.from_bytes(raw, "big")
-    encoded: list[str] = []
-    while num > 0:
-        num, rem = divmod(num, 58)
-        encoded.append(_BASE58_ALPHABET[rem])
-
-    if not encoded:
-        encoded.append(_BASE58_ALPHABET[0])
-
-    return (_BASE58_ALPHABET[0] * zeros) + "".join(reversed(encoded))
-
-
-def _legacy_uuid_to_task_id(value: str) -> str | None:
-    if not isinstance(value, str) or not _UUID_RE.match(value):
-        return None
-
-    canonical = str(UUID(value)).upper()
-    digest = hashlib.sha1(canonical.encode("utf-8")).digest()[:16]
-    return _base58_encode(digest)
+from things_cloud.ids import legacy_uuid_to_task_id
 
 
 def _normalize_ids(value):
     if isinstance(value, str):
-        return _legacy_uuid_to_task_id(value) or value
+        return legacy_uuid_to_task_id(value) or value
     if isinstance(value, list):
         return [_normalize_ids(v) for v in value]
     if isinstance(value, dict):
         out = {}
         for k, v in value.items():
-            new_k = _legacy_uuid_to_task_id(k) if isinstance(k, str) else None
+            new_k = legacy_uuid_to_task_id(k) if isinstance(k, str) else None
             out[new_k or k] = _normalize_ids(v)
         return out
     return value
@@ -77,7 +33,7 @@ def _normalize_ids(value):
 def _normalize_item_ids(item: dict) -> dict:
     normalized: dict = {}
     for uuid, obj in item.items():
-        new_uuid = _legacy_uuid_to_task_id(uuid) or uuid
+        new_uuid = legacy_uuid_to_task_id(uuid) or uuid
         normalized[new_uuid] = _normalize_ids(obj)
     return normalized
 
