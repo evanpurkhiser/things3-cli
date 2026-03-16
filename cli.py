@@ -12,7 +12,8 @@ from typing import Callable, Optional
 from things_cloud.client import ThingsCloudClient
 from things_cloud.auth import AuthConfigError, load_auth, write_auth
 from things_cloud.ids import random_task_id
-from things_cloud.log_cache import get_state_with_append_log
+from things_cloud.log_cache import get_state_with_append_log, fold_state_from_append_log
+from things_cloud.dirs import append_log_dir
 from things_cloud.store import ThingsStore, Task, Area, Tag, ChecklistItem
 from things_cloud.schema import (
     ENTITY_AREA,
@@ -2234,6 +2235,11 @@ def main():
         action="store_true",
         help="Disable color output",
     )
+    parser.add_argument(
+        "--no-sync",
+        action="store_true",
+        help="Skip cloud sync and use local cache only",
+    )
 
     subparsers = parser.add_subparsers(dest="command", metavar="<command>")
 
@@ -2504,7 +2510,10 @@ def main():
 
     client = ThingsCloudClient(email, password)
     try:
-        raw = get_state_with_append_log(client)
+        if args.no_sync:
+            raw = fold_state_from_append_log(append_log_dir())
+        else:
+            raw = get_state_with_append_log(client)
     except Exception as e:
         print(f"Error fetching data: {e}", file=sys.stderr)
         sys.exit(1)
