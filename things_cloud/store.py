@@ -31,6 +31,7 @@ TYPE_PROJECT = TaskType.PROJECT
 TYPE_HEADING = TaskType.HEADING
 RECURRENCE_FIXED_SCHEDULE = RecurrenceType.FIXED_SCHEDULE
 RECURRENCE_AFTER_COMPLETION = RecurrenceType.AFTER_COMPLETION
+LOCAL_TZ = datetime.now().astimezone().tzinfo or timezone.utc
 
 
 def _lcp_len(a: str, b: str) -> int:
@@ -471,7 +472,7 @@ class ThingsStore:
             if task.stop_date is None:
                 continue
 
-            stop_day = task.stop_date.astimezone(timezone.utc).replace(
+            stop_day = task.stop_date.astimezone(LOCAL_TZ).replace(
                 hour=0, minute=0, second=0, microsecond=0
             )
             if from_date and stop_day < from_date:

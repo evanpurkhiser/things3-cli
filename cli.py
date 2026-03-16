@@ -39,6 +39,7 @@ from things_cloud.schema import ENTITY_AREA, TaskProps, TaskStart, TaskStatus, T
 
 RECURRENCE_FIXED_SCHEDULE = 0
 RECURRENCE_AFTER_COMPLETION = 1
+LOCAL_TZ = datetime.now().astimezone().tzinfo or timezone.utc
 
 
 # ---------------------------------------------------------------------------
@@ -110,6 +111,13 @@ def fmt_date(dt: Optional[datetime]) -> str:
     if dt is None:
         return ""
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%d")
+
+
+def fmt_date_local(dt: Optional[datetime]) -> str:
+    """Format a datetime as YYYY-MM-DD in local timezone."""
+    if dt is None:
+        return ""
+    return dt.astimezone(LOCAL_TZ).strftime("%Y-%m-%d")
 
 
 def _task6_note(value: str) -> dict:
@@ -710,7 +718,7 @@ def _parse_day(day: Optional[str], label: str) -> Optional[datetime]:
         parsed = datetime.strptime(day, "%Y-%m-%d")
     except ValueError:
         raise ValueError(f"Invalid {label} date: {day} (expected YYYY-MM-DD)")
-    return parsed.replace(tzinfo=timezone.utc)
+    return parsed.replace(tzinfo=LOCAL_TZ)
 
 
 def cmd_logbook(store: ThingsStore, args):
@@ -734,7 +742,7 @@ def cmd_logbook(store: ThingsStore, args):
     print(colored(f"{ICONS.done} Logbook  ({len(tasks)} tasks)", BOLD + GREEN))
     current_day = ""
     for task in tasks:
-        day = fmt_date(task.stop_date)
+        day = fmt_date_local(task.stop_date)
         if day != current_day:
             print()
             print(colored(f"  {day}", BOLD))

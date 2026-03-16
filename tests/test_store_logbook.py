@@ -45,6 +45,7 @@ class StoreLogbookTests(unittest.TestCase):
 
     def test_logbook_respects_date_filters_for_canceled_items(self) -> None:
         stop_ts = 1773600100
+        local_tz = datetime.now().astimezone().tzinfo or timezone.utc
         state = {
             "canceled-00000000": {
                 "e": "Task6",
@@ -60,7 +61,7 @@ class StoreLogbookTests(unittest.TestCase):
         }
         store = ThingsStore(state)
 
-        day = datetime.fromtimestamp(stop_ts, tz=timezone.utc).replace(
+        day = datetime.fromtimestamp(stop_ts, tz=local_tz).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
         from_day = day
