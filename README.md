@@ -33,8 +33,7 @@ $ things3 today
 ## Supported features
 
 - [x] Configure auth with `set-auth` (stored in XDG state)
-- [x] Replay cloud history (`t=0/1/2`) with append-only local cache in XDG state
-- [x] Cache folded state and history key for fast startup (~450ms vs ~1500ms)
+- [x] Incremental sync with local cache for fast startup
 
 **Views**
 - [x] `inbox`, `today`, `upcoming`, `anytime`, `someday`, `logbook`
