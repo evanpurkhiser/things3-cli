@@ -34,6 +34,7 @@ $ things3 today
 
 - [x] Configure auth with `set-auth` (stored in XDG state)
 - [x] Incremental sync with local cache for fast startup
+- [x] `--no-sync` flag to skip cloud sync and use local cache only
 
 **Views**
 - [x] `inbox`, `today`, `upcoming`, `anytime`, `someday`, `logbook`
@@ -44,9 +45,10 @@ $ things3 today
 - [ ] Machine-readable output (`--json`, `--toon`) for scripting and LLM/tool use
 
 **Tasks**
-- [x] `new` — create tasks with title, notes, tags, when, position
+- [x] `new` — create tasks with title, notes, tags, when, deadline, position
 - [x] `edit` — rename, set/remove notes, move between containers
 - [x] `mark` — set status to done/incomplete/canceled (supports multiple IDs)
+- [x] `mark --check/--uncheck/--check-cancel` — toggle checklist items by short ID
 - [x] `schedule` — set when/start date, deadline, today/evening/someday
 - [x] `reorder` — reorder within lists
 - [x] `delete` — trash tasks
@@ -55,7 +57,7 @@ $ things3 today
 - [ ] Set/remove recurrence via `edit`
 
 **Projects**
-- [x] `projects new` — create projects with title, tags, when, area
+- [x] `projects new` — create projects with title, notes, tags, when, deadline, area
 - [ ] `edit` projects (title, notes, move to area)
 - [ ] Heading management — create/rename/delete/reorder headings within projects
 
