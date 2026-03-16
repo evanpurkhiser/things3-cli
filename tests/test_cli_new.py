@@ -58,7 +58,9 @@ class CmdNewTests(unittest.TestCase):
 
         out = io.StringIO()
         err = io.StringIO()
-        with patch("cli.random_task_id", return_value="task-new-000"):
+        with patch(
+            "things_cloud.cli.cmd_new.random_task_id", return_value="task-new-000"
+        ):
             with redirect_stdout(out), redirect_stderr(err):
                 cli.cmd_new(store, args, cast(Any, client))
 
@@ -92,7 +94,9 @@ class CmdNewTests(unittest.TestCase):
 
         out = io.StringIO()
         err = io.StringIO()
-        with patch("cli.random_task_id", return_value="task-new-000"):
+        with patch(
+            "things_cloud.cli.cmd_new.random_task_id", return_value="task-new-000"
+        ):
             with redirect_stdout(out), redirect_stderr(err):
                 cli.cmd_new(store, args, cast(Any, client))
 
@@ -131,7 +135,9 @@ class CmdNewTests(unittest.TestCase):
 
         out = io.StringIO()
         err = io.StringIO()
-        with patch("cli.random_task_id", return_value="task-new-000"):
+        with patch(
+            "things_cloud.cli.cmd_new.random_task_id", return_value="task-new-000"
+        ):
             with redirect_stdout(out), redirect_stderr(err):
                 cli.cmd_new(store, args, cast(Any, client))
 
@@ -175,7 +181,9 @@ class CmdNewTests(unittest.TestCase):
 
         out = io.StringIO()
         err = io.StringIO()
-        with patch("cli.random_task_id", return_value="task-new-000"):
+        with patch(
+            "things_cloud.cli.cmd_new.random_task_id", return_value="task-new-000"
+        ):
             with redirect_stdout(out), redirect_stderr(err):
                 cli.cmd_new(store, args, cast(Any, client))
 
@@ -230,7 +238,9 @@ class CmdNewTests(unittest.TestCase):
 
         out = io.StringIO()
         err = io.StringIO()
-        with patch("cli.random_task_id", return_value="task-new-000"):
+        with patch(
+            "things_cloud.cli.cmd_new.random_task_id", return_value="task-new-000"
+        ):
             with redirect_stdout(out), redirect_stderr(err):
                 cli.cmd_new(store, args, cast(Any, client))
 
