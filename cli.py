@@ -1011,6 +1011,119 @@ def _resolve_tag_ids(store: ThingsStore, raw_tags: str) -> tuple[list[str], str]
     return resolved, ""
 
 
+def cmd_new_project(store: ThingsStore, args, client: ThingsCloudClient):
+    """Create a new project with optional area, tags, and when."""
+    title = args.title.strip()
+    if not title:
+        print("Project title cannot be empty.", file=sys.stderr)
+        return
+
+    now_ts = time.time()
+    props = {
+        "tt": title,
+        "tp": TaskType.PROJECT,
+        "ss": TaskStatus.INCOMPLETE,
+        "st": TaskStart.ANYTIME,
+        "tr": False,
+        "cd": now_ts,
+        "md": now_ts,
+        "nt": None,
+        "xx": {"_t": "oo", "sn": {}},
+        "icp": True,
+        "rmd": None,
+        "rp": None,
+    }
+
+    if args.area:
+        area, err, ambiguous = store.resolve_area_identifier(args.area)
+        if not area:
+            print(err, file=sys.stderr)
+            if ambiguous:
+                id_prefix_len = store.unique_prefix_length([a.uuid for a in ambiguous])
+                for match in ambiguous:
+                    print(
+                        f"  {_id_prefix(match.uuid, id_prefix_len)} "
+                        f"{colored(f'{ICONS.area} {match.title}', BOLD)}"
+                    )
+            return
+        props["ar"] = [area.uuid]
+
+    when_raw = (args.when or "").strip()
+    if when_raw:
+        when_l = when_raw.lower()
+        if when_l == "anytime":
+            props["st"] = TaskStart.ANYTIME
+            props["sr"] = None
+        elif when_l == "someday":
+            props["st"] = TaskStart.SOMEDAY
+            props["sr"] = None
+        elif when_l == "today":
+            day = datetime.now(tz=timezone.utc).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+            props["st"] = TaskStart.ANYTIME
+            props["sr"] = int(day.timestamp())
+            props["tir"] = int(day.timestamp())
+        else:
+            try:
+                day = _parse_day(when_raw, "--when")
+            except ValueError as e:
+                print(str(e), file=sys.stderr)
+                return
+            if day is None:
+                print(
+                    "--when requires anytime, someday, today, or YYYY-MM-DD",
+                    file=sys.stderr,
+                )
+                return
+            day_ts = int(day.timestamp())
+            props["st"] = TaskStart.SOMEDAY
+            props["sr"] = day_ts
+            props["tir"] = day_ts
+
+    if args.tags:
+        tag_ids, tag_err = _resolve_tag_ids(store, args.tags)
+        if tag_err:
+            print(tag_err, file=sys.stderr)
+            return
+        props["tg"] = tag_ids
+
+    new_uuid = random_task_id()
+    try:
+        client.create_task(new_uuid, props, entity="Task6")
+    except Exception as e:
+        print(f"Failed to create project: {e}", file=sys.stderr)
+        return
+
+    print(colored(f"{ICONS.done} Created", GREEN), f"{title}  {colored(new_uuid, DIM)}")
+
+
+def cmd_new_area(store: ThingsStore, args, client: ThingsCloudClient):
+    """Create a new area with just a title."""
+    title = args.title.strip()
+    if not title:
+        print("Area title cannot be empty.", file=sys.stderr)
+        return
+
+    now_ts = time.time()
+    props = {
+        "tt": title,
+        "ix": 0,
+        "xx": {"_t": "oo", "sn": {}},
+        "cd": now_ts,
+        "md": now_ts,
+    }
+
+    new_uuid = random_task_id()
+    try:
+        client.create_task(new_uuid, props, entity=ENTITY_AREA)
+    except Exception as e:
+        print(f"Failed to create area: {e}", file=sys.stderr)
+        return
+
+    print(colored(f"{ICONS.done} Created", GREEN), f"{title}  {colored(new_uuid, DIM)}")
+
+
 def cmd_new(store: ThingsStore, args, client: ThingsCloudClient):
     """Create a new task with optional container, schedule, notes, and tags."""
     title = args.title.strip()
@@ -2021,6 +2134,20 @@ def _run_new(store: ThingsStore, args: argparse.Namespace, client: ThingsCloudCl
     return None
 
 
+def _run_new_project(
+    store: ThingsStore, args: argparse.Namespace, client: ThingsCloudClient
+):
+    cmd_new_project(store, args, client)
+    return None
+
+
+def _run_new_area(
+    store: ThingsStore, args: argparse.Namespace, client: ThingsCloudClient
+):
+    cmd_new_area(store, args, client)
+    return None
+
+
 def _run_schedule(
     store: ThingsStore, args: argparse.Namespace, client: ThingsCloudClient
 ):
@@ -2055,7 +2182,9 @@ COMMANDS: dict[str, CommandHandler] = {
     "someday": _adapt_store_command(cmd_someday),
     "logbook": _adapt_store_command(cmd_logbook),
     "projects": _adapt_store_command(cmd_projects),
+    "projects:new": _run_new_project,
     "areas": _adapt_store_command(cmd_areas),
+    "areas:new": _run_new_area,
     "tags": _adapt_store_command(cmd_tags),
     "project": _adapt_store_command(cmd_project),
     "area": _adapt_store_command(cmd_area),
@@ -2124,10 +2253,40 @@ def main():
         dest="to_date",
         help="Show items completed on/before this date (YYYY-MM-DD)",
     )
-    subparsers.add_parser(
-        "projects", help="Show all active projects", parents=[detailed_parent]
+    projects_parser = subparsers.add_parser(
+        "projects", help="Show or create projects", parents=[detailed_parent]
     )
-    subparsers.add_parser("areas", help="Show all areas")
+    projects_subs = projects_parser.add_subparsers(
+        dest="projects_cmd", metavar="<subcommand>"
+    )
+    projects_subs.add_parser(
+        "list", help="Show all active projects", parents=[detailed_parent]
+    )
+    projects_new_parser = projects_subs.add_parser("new", help="Create a new project")
+    projects_new_parser.add_argument("title", help="Project title")
+    projects_new_parser.add_argument(
+        "--area",
+        help="Area UUID/prefix to place the project in",
+    )
+    projects_new_parser.add_argument(
+        "--when",
+        help="Schedule: anytime (default), someday, today, or YYYY-MM-DD",
+    )
+    projects_new_parser.add_argument(
+        "--tags",
+        help="Comma-separated tags (titles or UUID prefixes)",
+    )
+    # Make 'list' the default when no subcommand given
+    projects_parser.set_defaults(projects_cmd="list")
+
+    areas_parser = subparsers.add_parser("areas", help="Show or create areas")
+    areas_subs = areas_parser.add_subparsers(dest="areas_cmd", metavar="<subcommand>")
+    areas_subs.add_parser("list", help="Show all areas")
+    areas_new_parser = areas_subs.add_parser("new", help="Create a new area")
+    areas_new_parser.add_argument("title", help="Area title")
+    # Make 'list' the default when no subcommand given
+    areas_parser.set_defaults(areas_cmd="list")
+
     subparsers.add_parser("tags", help="Show all tags")
 
     project_parser = subparsers.add_parser(
@@ -2317,7 +2476,17 @@ def main():
     store = ThingsStore(raw)
 
     # Dispatch
-    rc = COMMANDS[args.command](store, args, client)
+    command_key = args.command
+    if args.command == "projects":
+        sub = getattr(args, "projects_cmd", "list")
+        if sub and sub != "list":
+            command_key = f"projects:{sub}"
+    elif args.command == "areas":
+        sub = getattr(args, "areas_cmd", "list")
+        if sub and sub != "list":
+            command_key = f"areas:{sub}"
+
+    rc = COMMANDS[command_key](store, args, client)
     if rc:
         sys.exit(rc)
 

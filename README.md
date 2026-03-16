@@ -55,12 +55,12 @@ $ things3 today
 - [ ] Set/remove recurrence via `edit`
 
 **Projects**
-- [ ] `new project` — create projects with title, notes, tags, when, area
+- [x] `projects new` — create projects with title, tags, when, area
 - [ ] `edit` projects (title, notes, move to area)
 - [ ] Heading management — create/rename/delete/reorder headings within projects
 
 **Areas**
-- [ ] `new area` — create areas with title, tags
+- [x] `areas new` — create areas with title
 - [ ] `edit` areas (title, tags)
 
 **Testing**
