@@ -1946,7 +1946,7 @@ def main():
         help="Disable color output",
     )
 
-    subparsers = parser.add_subparsers(dest="command")
+    subparsers = parser.add_subparsers(dest="command", metavar="<command>")
 
     # View commands
     subparsers.add_parser("inbox", help="Show the Inbox")
