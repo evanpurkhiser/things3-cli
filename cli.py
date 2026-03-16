@@ -175,6 +175,64 @@ def fmt_task_line(
     return line
 
 
+def _note_indent(
+    id_prefix_len: Optional[int],
+    show_today_markers: bool,
+    task: Task,
+) -> str:
+    """Return the indent string to align a note under the task title."""
+    # checkbox + space
+    width = 2
+    # id prefix + space
+    if id_prefix_len and id_prefix_len > 0:
+        width += id_prefix_len + 1
+    # today/evening marker + space
+    if show_today_markers and (task.evening or task.is_today):
+        width += 2
+    return " " * width
+
+
+def print_task_with_note(
+    line: str,
+    task: Task,
+    indent: str,
+    show_today_markers: bool = False,
+    id_prefix_len: Optional[int] = None,
+    detailed: bool = False,
+):
+    """Print a formatted task line, and optionally its note beneath it."""
+    print(indent + line)
+    if detailed and task.notes:
+        note_pad = indent + _note_indent(id_prefix_len, show_today_markers, task)
+        note_lines = task.notes.splitlines()
+        for note_line in note_lines:
+            print(colored(note_pad + note_line, DIM))
+
+
+def print_project_with_note(
+    project: Task,
+    store: ThingsStore,
+    indent: str,
+    id_prefix_len: Optional[int] = None,
+    show_indicators: bool = True,
+    detailed: bool = False,
+):
+    """Print a formatted project line, and optionally its note beneath it."""
+    line = fmt_project_line(
+        project, store, show_indicators=show_indicators, id_prefix_len=id_prefix_len
+    )
+    print(indent + line)
+    if detailed and project.notes:
+        # align under title: id_prefix + space + marker + space
+        width = id_prefix_len + 3 if id_prefix_len else 2
+        # today/evening indicator adds " ⭑" or " ☽" before the title
+        if show_indicators and (project.is_today or project.evening):
+            width += 2
+        note_pad = indent + " " * width
+        for note_line in project.notes.splitlines():
+            print(colored(note_pad + note_line, DIM))
+
+
 def print_section(
     title: str, tasks: list[Task], store: ThingsStore, show_project: bool = False
 ):
@@ -192,6 +250,7 @@ def print_tasks_grouped(
     indent: str = "  ",
     show_today_markers: bool = False,
     id_prefix_len: Optional[int] = None,
+    detailed: bool = False,
 ):
     """Print tasks grouped by area and project, preserving first-seen order."""
     max_group_items = 3
@@ -199,15 +258,20 @@ def print_tasks_grouped(
     def print_limited_tasks(group_tasks: list[Task], task_indent: str):
         shown = group_tasks[:max_group_items]
         for task in shown:
-            print(
-                task_indent
-                + fmt_task_line(
-                    task,
-                    store,
-                    show_project=False,
-                    show_today_markers=show_today_markers,
-                    id_prefix_len=id_prefix_len,
-                )
+            line = fmt_task_line(
+                task,
+                store,
+                show_project=False,
+                show_today_markers=show_today_markers,
+                id_prefix_len=id_prefix_len,
+            )
+            print_task_with_note(
+                line,
+                task,
+                task_indent,
+                show_today_markers=show_today_markers,
+                id_prefix_len=id_prefix_len,
+                detailed=detailed,
             )
         hidden = len(group_tasks) - len(shown)
         if hidden > 0:
@@ -255,15 +319,20 @@ def print_tasks_grouped(
 
     if unscoped:
         for task in unscoped:
-            print(
-                indent
-                + fmt_task_line(
-                    task,
-                    store,
-                    show_project=False,
-                    show_today_markers=show_today_markers,
-                    id_prefix_len=id_prefix_len,
-                )
+            line = fmt_task_line(
+                task,
+                store,
+                show_project=False,
+                show_today_markers=show_today_markers,
+                id_prefix_len=id_prefix_len,
+            )
+            print_task_with_note(
+                line,
+                task,
+                indent,
+                show_today_markers=show_today_markers,
+                id_prefix_len=id_prefix_len,
+                detailed=detailed,
             )
         any_printed = True
 
@@ -305,6 +374,7 @@ def print_tasks_grouped(
 
 def cmd_today(store: ThingsStore, args):
     """Show Today view."""
+    detailed = args.detailed
     tasks = store.today()
     today_items = [
         t
@@ -345,24 +415,23 @@ def cmd_today(store: ThingsStore, args):
         print()
         for item in regular:
             if item.is_project:
-                print(
-                    "  "
-                    + fmt_project_line(
-                        item,
-                        store,
-                        show_indicators=False,
-                        id_prefix_len=id_prefix_len,
-                    )
+                print_project_with_note(
+                    item,
+                    store,
+                    "  ",
+                    show_indicators=False,
+                    id_prefix_len=id_prefix_len,
+                    detailed=detailed,
                 )
             else:
-                print(
-                    "  "
-                    + fmt_task_line(
-                        item,
-                        store,
-                        show_today_markers=False,
-                        id_prefix_len=id_prefix_len,
-                    )
+                line = fmt_task_line(
+                    item,
+                    store,
+                    show_today_markers=False,
+                    id_prefix_len=id_prefix_len,
+                )
+                print_task_with_note(
+                    line, item, "  ", id_prefix_len=id_prefix_len, detailed=detailed
                 )
 
     if evening:
@@ -371,29 +440,29 @@ def cmd_today(store: ThingsStore, args):
         print()
         for item in evening:
             if item.is_project:
-                print(
-                    "  "
-                    + fmt_project_line(
-                        item,
-                        store,
-                        show_indicators=False,
-                        id_prefix_len=id_prefix_len,
-                    )
+                print_project_with_note(
+                    item,
+                    store,
+                    "  ",
+                    show_indicators=False,
+                    id_prefix_len=id_prefix_len,
+                    detailed=detailed,
                 )
             else:
-                print(
-                    "  "
-                    + fmt_task_line(
-                        item,
-                        store,
-                        show_today_markers=False,
-                        id_prefix_len=id_prefix_len,
-                    )
+                line = fmt_task_line(
+                    item,
+                    store,
+                    show_today_markers=False,
+                    id_prefix_len=id_prefix_len,
+                )
+                print_task_with_note(
+                    line, item, "  ", id_prefix_len=id_prefix_len, detailed=detailed
                 )
 
 
 def cmd_inbox(store: ThingsStore, args):
     """Show Inbox view."""
+    detailed = args.detailed
     tasks = store.inbox()
 
     if not tasks:
@@ -402,11 +471,14 @@ def cmd_inbox(store: ThingsStore, args):
 
     print(colored(f"{ICONS.inbox} Inbox  ({len(tasks)} tasks)", BOLD + BLUE))
     print()
-    print_tasks_grouped(tasks, store, indent="  ", show_today_markers=True)
+    print_tasks_grouped(
+        tasks, store, indent="  ", show_today_markers=True, detailed=detailed
+    )
 
 
 def cmd_anytime(store: ThingsStore, args):
     """Show Anytime view."""
+    detailed = args.detailed
     tasks = store.anytime()
 
     if not tasks:
@@ -415,11 +487,14 @@ def cmd_anytime(store: ThingsStore, args):
 
     print(colored(f"{ICONS.anytime} Anytime  ({len(tasks)} tasks)", BOLD + CYAN))
     print()
-    print_tasks_grouped(tasks, store, indent="  ", show_today_markers=True)
+    print_tasks_grouped(
+        tasks, store, indent="  ", show_today_markers=True, detailed=detailed
+    )
 
 
 def cmd_someday(store: ThingsStore, args):
     """Show Someday view."""
+    detailed = args.detailed
     items = store.someday()
 
     if not items:
@@ -433,25 +508,28 @@ def cmd_someday(store: ThingsStore, args):
     tasks = [item for item in items if not item.is_project]
 
     for item in projects:
-        print("  " + fmt_project_line(item, store, id_prefix_len=id_prefix_len))
+        print_project_with_note(
+            item, store, "  ", id_prefix_len=id_prefix_len, detailed=detailed
+        )
 
     if projects and tasks:
         print()
 
     for item in tasks:
-        print(
-            "  "
-            + fmt_task_line(
-                item,
-                store,
-                show_today_markers=False,
-                id_prefix_len=id_prefix_len,
-            )
+        line = fmt_task_line(
+            item,
+            store,
+            show_today_markers=False,
+            id_prefix_len=id_prefix_len,
+        )
+        print_task_with_note(
+            line, item, "  ", id_prefix_len=id_prefix_len, detailed=detailed
         )
 
 
 def cmd_projects(store: ThingsStore, args):
     """Show all active projects."""
+    detailed = args.detailed
     projects = store.projects()
 
     if not projects:
@@ -477,7 +555,9 @@ def cmd_projects(store: ThingsStore, args):
     if no_area:
         print()
         for p in no_area:
-            print("  " + fmt_project_line(p, store, id_prefix_len=id_prefix_len))
+            print_project_with_note(
+                p, store, "  ", id_prefix_len=id_prefix_len, detailed=detailed
+            )
 
     for area_uuid, area_projects in by_area.items():
         area_title = store.resolve_area_title(area_uuid) if area_uuid else "?"
@@ -485,7 +565,9 @@ def cmd_projects(store: ThingsStore, args):
         area_id = _id_prefix(area_uuid, id_prefix_len) if area_uuid else "?"
         print(f"  {area_id} {colored(area_title, BOLD)}")
         for p in area_projects:
-            print("    " + fmt_project_line(p, store, id_prefix_len=id_prefix_len))
+            print_project_with_note(
+                p, store, "    ", id_prefix_len=id_prefix_len, detailed=detailed
+            )
 
 
 def fmt_project_line(
@@ -559,6 +641,7 @@ def cmd_areas(store: ThingsStore, args):
 
 def cmd_area(store: ThingsStore, args):
     """Show all projects and tasks in a specific area."""
+    detailed = args.detailed
     area, err, ambiguous = store.resolve_area_identifier(args.area_id)
     if not area:
         print(err, file=sys.stderr)
@@ -609,18 +692,25 @@ def cmd_area(store: ThingsStore, args):
     if loose_tasks:
         print()
         for t in loose_tasks:
-            print(
-                "  "
-                + fmt_task_line(
-                    t, store, show_today_markers=True, id_prefix_len=id_prefix_len
-                )
+            line = fmt_task_line(
+                t, store, show_today_markers=True, id_prefix_len=id_prefix_len
+            )
+            print_task_with_note(
+                line,
+                t,
+                "  ",
+                show_today_markers=True,
+                id_prefix_len=id_prefix_len,
+                detailed=detailed,
             )
 
     # Then projects
     if projects:
         print()
         for p in projects:
-            print("  " + fmt_project_line(p, store, id_prefix_len=id_prefix_len))
+            print_project_with_note(
+                p, store, "  ", id_prefix_len=id_prefix_len, detailed=detailed
+            )
 
 
 def cmd_tags(store: ThingsStore, args):
@@ -640,6 +730,7 @@ def cmd_tags(store: ThingsStore, args):
 
 def cmd_upcoming(store: ThingsStore, args):
     """Show tasks scheduled for the future."""
+    detailed = args.detailed
     now_ts = int(
         datetime.now(tz=timezone.utc)
         .replace(hour=0, minute=0, second=0, microsecond=0)
@@ -677,6 +768,7 @@ def cmd_upcoming(store: ThingsStore, args):
             store,
             indent="    ",
             show_today_markers=True,
+            detailed=detailed,
         )
 
     for task in tasks:
@@ -702,6 +794,7 @@ def _parse_day(day: Optional[str], label: str) -> Optional[datetime]:
 
 def cmd_logbook(store: ThingsStore, args):
     """Show completed tasks, optionally filtered by completion date."""
+    detailed = args.detailed
     try:
         from_day = _parse_day(args.from_date, "--from")
         to_day = _parse_day(args.to_date, "--to")
@@ -726,11 +819,13 @@ def cmd_logbook(store: ThingsStore, args):
             print()
             print(colored(f"  {day}", BOLD))
             current_day = day
-        print("    " + fmt_task_line(task, store, show_project=True))
+        line = fmt_task_line(task, store, show_project=True)
+        print_task_with_note(line, task, "    ", detailed=detailed)
 
 
 def cmd_project(store: ThingsStore, args):
     """Show all tasks in a specific project, grouped by heading."""
+    detailed = args.detailed
     task, err, ambiguous = store.resolve_mark_identifier(args.project_id)
     if not task:
         print(err, file=sys.stderr)
@@ -801,6 +896,9 @@ def cmd_project(store: ThingsStore, args):
         )
         + tags
     )
+    if project.notes:
+        for note_line in project.notes.splitlines():
+            print("  " + note_line)
 
     all_uuids = [project.uuid] + [t.uuid for t in children]
     id_prefix_len = store.unique_prefix_length(all_uuids)
@@ -813,11 +911,16 @@ def cmd_project(store: ThingsStore, args):
     if ungrouped:
         print()
         for t in ungrouped:
-            print(
-                "  "
-                + fmt_task_line(
-                    t, store, show_today_markers=True, id_prefix_len=id_prefix_len
-                )
+            line = fmt_task_line(
+                t, store, show_today_markers=True, id_prefix_len=id_prefix_len
+            )
+            print_task_with_note(
+                line,
+                t,
+                "  ",
+                show_today_markers=True,
+                id_prefix_len=id_prefix_len,
+                detailed=detailed,
             )
 
     # Then heading groups
@@ -827,11 +930,16 @@ def cmd_project(store: ThingsStore, args):
         print()
         print(colored(f"  {heading.title}", BOLD))
         for t in heading_tasks:
-            print(
-                "    "
-                + fmt_task_line(
-                    t, store, show_today_markers=True, id_prefix_len=id_prefix_len
-                )
+            line = fmt_task_line(
+                t, store, show_today_markers=True, id_prefix_len=id_prefix_len
+            )
+            print_task_with_note(
+                line,
+                t,
+                "    ",
+                show_today_markers=True,
+                id_prefix_len=id_prefix_len,
+                detailed=detailed,
             )
 
 
@@ -1948,13 +2056,33 @@ def main():
 
     subparsers = parser.add_subparsers(dest="command", metavar="<command>")
 
+    # Shared parent parser for view commands that show tasks
+    detailed_parent = argparse.ArgumentParser(add_help=False)
+    detailed_parent.add_argument(
+        "--detailed",
+        action="store_true",
+        help="Show notes beneath each task",
+    )
+
     # View commands
-    subparsers.add_parser("inbox", help="Show the Inbox")
-    subparsers.add_parser("today", help="Show the Today view (default)")
-    subparsers.add_parser("upcoming", help="Show tasks scheduled for the future")
-    subparsers.add_parser("anytime", help="Show the Anytime view")
-    subparsers.add_parser("someday", help="Show the Someday view")
-    logbook_parser = subparsers.add_parser("logbook", help="Show the Logbook")
+    subparsers.add_parser("inbox", help="Show the Inbox", parents=[detailed_parent])
+    subparsers.add_parser(
+        "today", help="Show the Today view (default)", parents=[detailed_parent]
+    )
+    subparsers.add_parser(
+        "upcoming",
+        help="Show tasks scheduled for the future",
+        parents=[detailed_parent],
+    )
+    subparsers.add_parser(
+        "anytime", help="Show the Anytime view", parents=[detailed_parent]
+    )
+    subparsers.add_parser(
+        "someday", help="Show the Someday view", parents=[detailed_parent]
+    )
+    logbook_parser = subparsers.add_parser(
+        "logbook", help="Show the Logbook", parents=[detailed_parent]
+    )
     logbook_parser.add_argument(
         "--from",
         dest="from_date",
@@ -1965,12 +2093,14 @@ def main():
         dest="to_date",
         help="Show items completed on/before this date (YYYY-MM-DD)",
     )
-    subparsers.add_parser("projects", help="Show all active projects")
+    subparsers.add_parser(
+        "projects", help="Show all active projects", parents=[detailed_parent]
+    )
     subparsers.add_parser("areas", help="Show all areas")
     subparsers.add_parser("tags", help="Show all tags")
 
     project_parser = subparsers.add_parser(
-        "project", help="Show all tasks in a project"
+        "project", help="Show all tasks in a project", parents=[detailed_parent]
     )
     project_parser.add_argument(
         "project_id",
@@ -1978,7 +2108,7 @@ def main():
     )
 
     area_parser = subparsers.add_parser(
-        "area", help="Show projects and tasks in an area"
+        "area", help="Show projects and tasks in an area", parents=[detailed_parent]
     )
     area_parser.add_argument(
         "area_id",
