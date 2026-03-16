@@ -75,6 +75,7 @@ class _Icons:
     done: str = "✓"
     incomplete: str = "↺"
     canceled: str = "☒"
+    deleted: str = "×"
 
     # Checklist items
     checklist_open: str = "○"
@@ -2087,7 +2088,7 @@ def cmd_delete(store: ThingsStore, args, client: ThingsCloudClient):
 
     for uuid, _entity, title in targets:
         print(
-            colored(f"{ICONS.canceled} Deleted", GREEN),
+            colored(f"{ICONS.deleted} Deleted", GREEN),
             f"{title}  {colored(uuid, DIM)}",
         )
 
