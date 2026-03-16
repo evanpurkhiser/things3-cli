@@ -11,6 +11,7 @@ from things_cloud.cli.common import (
     GREEN,
     DIM,
     ICONS,
+    CommandHandler,
     colored,
     fmt_task_line,
     fmt_project_line,
@@ -203,7 +204,7 @@ def cmd_reorder(
     )
 
 
-def register(subparsers, parents: dict) -> dict:
+def register(subparsers, parents: dict) -> dict[str, CommandHandler]:
     reorder_parser = subparsers.add_parser(
         "reorder", help="Reorder item relative to another item"
     )
@@ -223,8 +224,4 @@ def register(subparsers, parents: dict) -> dict:
         help="Place item after this task/project/heading UUID/prefix",
     )
 
-    def _run_reorder(store, args, client):
-        cmd_reorder(store, args, client)
-        return None
-
-    return {"reorder": _run_reorder}
+    return {"reorder": cmd_reorder}

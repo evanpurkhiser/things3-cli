@@ -9,10 +9,12 @@ from things_cloud.cli.common import (
     YELLOW,
     DIM,
     ICONS,
+    CommandHandler,
     colored,
     fmt_task_line,
     print_task_with_note,
     print_project_with_note,
+    _adapt_store_command,
 )
 
 
@@ -104,11 +106,9 @@ def cmd_today(store: ThingsStore, args: argparse.Namespace) -> None:
                 )
 
 
-def register(subparsers, parents: dict) -> dict:
+def register(subparsers, parents: dict) -> dict[str, CommandHandler]:
     detailed_parent = parents["detailed"]
     subparsers.add_parser(
         "today", help="Show the Today view (default)", parents=[detailed_parent]
     )
-    from things_cloud.cli.common import _adapt_store_command
-
     return {"today": _adapt_store_command(cmd_today)}

@@ -9,10 +9,12 @@ from things_cloud.cli.common import (
     MAGENTA,
     DIM,
     ICONS,
+    CommandHandler,
     colored,
     fmt_task_line,
     print_task_with_note,
     print_project_with_note,
+    _adapt_store_command,
 )
 
 
@@ -90,7 +92,7 @@ def cmd_area(store: ThingsStore, args: argparse.Namespace) -> None:
             )
 
 
-def register(subparsers, parents: dict) -> dict:
+def register(subparsers, parents: dict) -> dict[str, CommandHandler]:
     detailed_parent = parents["detailed"]
     area_parser = subparsers.add_parser(
         "area", help="Show projects and tasks in an area", parents=[detailed_parent]
@@ -104,6 +106,4 @@ def register(subparsers, parents: dict) -> dict:
         action="store_true",
         help="Include completed tasks and projects",
     )
-    from things_cloud.cli.common import _adapt_store_command
-
     return {"area": _adapt_store_command(cmd_area)}

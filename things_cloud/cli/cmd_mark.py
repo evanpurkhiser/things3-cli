@@ -11,6 +11,7 @@ from things_cloud.cli.common import (
     GREEN,
     DIM,
     ICONS,
+    CommandHandler,
     colored,
     fmt_task_line,
     fmt_project_line,
@@ -272,7 +273,7 @@ def cmd_mark(
         print(colored(label, GREEN), f"{task.title}  {colored(task.uuid, DIM)}")
 
 
-def register(subparsers, parents: dict) -> dict:
+def register(subparsers, parents: dict) -> dict[str, CommandHandler]:
     mark_parser = subparsers.add_parser(
         "mark", help="Mark a task done, incomplete, or canceled"
     )
@@ -316,8 +317,4 @@ def register(subparsers, parents: dict) -> dict:
         help="Mark checklist items canceled (comma-separated short IDs, single task only)",
     )
 
-    def _run_mark(store, args, client):
-        cmd_mark(store, args, client)
-        return None
-
-    return {"mark": _run_mark}
+    return {"mark": cmd_mark}

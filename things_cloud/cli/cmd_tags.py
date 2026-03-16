@@ -7,7 +7,9 @@ from things_cloud.cli.common import (
     BOLD,
     DIM,
     ICONS,
+    CommandHandler,
     colored,
+    _adapt_store_command,
 )
 
 
@@ -26,8 +28,6 @@ def cmd_tags(store: ThingsStore, args: argparse.Namespace) -> None:
         print(f"  {colored(ICONS.tag, DIM)} {tag.title}{shortcut}")
 
 
-def register(subparsers, parents: dict) -> dict:
+def register(subparsers, parents: dict) -> dict[str, CommandHandler]:
     subparsers.add_parser("tags", help="Show all tags")
-    from things_cloud.cli.common import _adapt_store_command
-
     return {"tags": _adapt_store_command(cmd_tags)}

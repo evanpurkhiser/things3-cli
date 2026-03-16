@@ -10,10 +10,12 @@ from things_cloud.cli.common import (
     CYAN,
     DIM,
     ICONS,
+    CommandHandler,
     colored,
     fmt_date,
     print_tasks_grouped,
     _day_to_timestamp,
+    _adapt_store_command,
 )
 
 
@@ -71,13 +73,11 @@ def cmd_upcoming(store: ThingsStore, args: argparse.Namespace) -> None:
     flush_date_group(current_date, date_tasks)
 
 
-def register(subparsers, parents: dict) -> dict:
+def register(subparsers, parents: dict) -> dict[str, CommandHandler]:
     detailed_parent = parents["detailed"]
     subparsers.add_parser(
         "upcoming",
         help="Show tasks scheduled for the future",
         parents=[detailed_parent],
     )
-    from things_cloud.cli.common import _adapt_store_command
-
     return {"upcoming": _adapt_store_command(cmd_upcoming)}

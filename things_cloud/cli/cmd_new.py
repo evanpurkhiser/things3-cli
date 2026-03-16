@@ -14,6 +14,7 @@ from things_cloud.cli.common import (
     GREEN,
     DIM,
     ICONS,
+    CommandHandler,
     colored,
     fmt_task_line,
     fmt_project_line,
@@ -348,7 +349,7 @@ def cmd_new(
     print(colored(f"{ICONS.done} Created", GREEN), f"{title}  {colored(new_uuid, DIM)}")
 
 
-def register(subparsers, parents: dict) -> dict:
+def register(subparsers, parents: dict) -> dict[str, CommandHandler]:
     new_parser = subparsers.add_parser("new", help="Create a new task")
     new_parser.add_argument("title", help="Task title")
     new_parser.add_argument(
@@ -387,8 +388,4 @@ def register(subparsers, parents: dict) -> dict:
         help="Deadline date (YYYY-MM-DD)",
     )
 
-    def _run_new(store, args, client):
-        cmd_new(store, args, client)
-        return None
-
-    return {"new": _run_new}
+    return {"new": cmd_new}

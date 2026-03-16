@@ -14,8 +14,10 @@ from things_cloud.cli.common import (
     GREEN,
     DIM,
     ICONS,
+    CommandHandler,
     colored,
     _id_prefix,
+    _adapt_store_command,
 )
 
 
@@ -71,7 +73,7 @@ def cmd_new_area(
     print(colored(f"{ICONS.done} Created", GREEN), f"{title}  {colored(new_uuid, DIM)}")
 
 
-def register(subparsers, parents: dict) -> dict:
+def register(subparsers, parents: dict) -> dict[str, CommandHandler]:
     areas_parser = subparsers.add_parser("areas", help="Show or create areas")
     areas_subs = areas_parser.add_subparsers(dest="areas_cmd", metavar="<subcommand>")
     areas_subs.add_parser("list", help="Show all areas")
@@ -80,13 +82,7 @@ def register(subparsers, parents: dict) -> dict:
     # Make 'list' the default when no subcommand given
     areas_parser.set_defaults(areas_cmd="list")
 
-    from things_cloud.cli.common import _adapt_store_command
-
-    def _run_new_area(store, args, client):
-        cmd_new_area(store, args, client)
-        return None
-
     return {
         "areas": _adapt_store_command(cmd_areas),
-        "areas:new": _run_new_area,
+        "areas:new": cmd_new_area,
     }

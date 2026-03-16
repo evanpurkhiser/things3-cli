@@ -11,6 +11,7 @@ from things_cloud.cli.common import (
     GREEN,
     DIM,
     ICONS,
+    CommandHandler,
     colored,
     fmt_task_line,
     fmt_project_line,
@@ -116,7 +117,7 @@ def cmd_delete(
         )
 
 
-def register(subparsers, parents: dict) -> dict:
+def register(subparsers, parents: dict) -> dict[str, CommandHandler]:
     delete_parser = subparsers.add_parser(
         "delete", help="Delete tasks/projects/headings/areas"
     )
@@ -126,8 +127,4 @@ def register(subparsers, parents: dict) -> dict:
         help="Task/Project/Heading/Area UUID(s) (or unique UUID prefixes)",
     )
 
-    def _run_delete(store, args, client):
-        cmd_delete(store, args, client)
-        return None
-
-    return {"delete": _run_delete}
+    return {"delete": cmd_delete}

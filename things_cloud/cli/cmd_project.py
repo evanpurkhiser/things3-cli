@@ -9,11 +9,13 @@ from things_cloud.cli.common import (
     GREEN,
     DIM,
     ICONS,
+    CommandHandler,
     colored,
     fmt_task_line,
     fmt_project_line,
     fmt_deadline,
     print_task_with_note,
+    _adapt_store_command,
 )
 
 
@@ -140,7 +142,7 @@ def cmd_project(store: ThingsStore, args: argparse.Namespace) -> None:
             )
 
 
-def register(subparsers, parents: dict) -> dict:
+def register(subparsers, parents: dict) -> dict[str, CommandHandler]:
     detailed_parent = parents["detailed"]
     project_parser = subparsers.add_parser(
         "project", help="Show all tasks in a project", parents=[detailed_parent]
@@ -149,6 +151,4 @@ def register(subparsers, parents: dict) -> dict:
         "project_id",
         help="Project UUID (or unique UUID prefix)",
     )
-    from things_cloud.cli.common import _adapt_store_command
-
     return {"project": _adapt_store_command(cmd_project)}

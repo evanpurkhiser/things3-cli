@@ -8,8 +8,10 @@ from things_cloud.cli.common import (
     BLUE,
     DIM,
     ICONS,
+    CommandHandler,
     colored,
     print_tasks_grouped,
+    _adapt_store_command,
 )
 
 
@@ -29,9 +31,7 @@ def cmd_inbox(store: ThingsStore, args: argparse.Namespace) -> None:
     )
 
 
-def register(subparsers, parents: dict) -> dict:
+def register(subparsers, parents: dict) -> dict[str, CommandHandler]:
     detailed_parent = parents["detailed"]
     subparsers.add_parser("inbox", help="Show the Inbox", parents=[detailed_parent])
-    from things_cloud.cli.common import _adapt_store_command
-
     return {"inbox": _adapt_store_command(cmd_inbox)}

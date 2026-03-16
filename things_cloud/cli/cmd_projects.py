@@ -15,6 +15,7 @@ from things_cloud.cli.common import (
     GREEN,
     DIM,
     ICONS,
+    CommandHandler,
     colored,
     fmt_deadline,
     _id_prefix,
@@ -23,6 +24,7 @@ from things_cloud.cli.common import (
     _day_to_timestamp,
     _resolve_tag_ids,
     print_project_with_note,
+    _adapt_store_command,
 )
 
 
@@ -167,7 +169,7 @@ def cmd_new_project(
     print(colored(f"{ICONS.done} Created", GREEN), f"{title}  {colored(new_uuid, DIM)}")
 
 
-def register(subparsers, parents: dict) -> dict:
+def register(subparsers, parents: dict) -> dict[str, CommandHandler]:
     detailed_parent = parents["detailed"]
     projects_parser = subparsers.add_parser(
         "projects", help="Show or create projects", parents=[detailed_parent]
@@ -205,13 +207,7 @@ def register(subparsers, parents: dict) -> dict:
     # Make 'list' the default when no subcommand given
     projects_parser.set_defaults(projects_cmd="list")
 
-    from things_cloud.cli.common import _adapt_store_command
-
-    def _run_new_project(store, args, client):
-        cmd_new_project(store, args, client)
-        return None
-
     return {
         "projects": _adapt_store_command(cmd_projects),
-        "projects:new": _run_new_project,
+        "projects:new": cmd_new_project,
     }

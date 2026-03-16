@@ -9,11 +9,13 @@ from things_cloud.cli.common import (
     GREEN,
     DIM,
     ICONS,
+    CommandHandler,
     colored,
     fmt_task_line,
     fmt_date_local,
     print_task_with_note,
     _parse_day,
+    _adapt_store_command,
 )
 
 
@@ -48,7 +50,7 @@ def cmd_logbook(store: ThingsStore, args: argparse.Namespace) -> None:
         print_task_with_note(line, task, "    ", detailed=detailed)
 
 
-def register(subparsers, parents: dict) -> dict:
+def register(subparsers, parents: dict) -> dict[str, CommandHandler]:
     detailed_parent = parents["detailed"]
     logbook_parser = subparsers.add_parser(
         "logbook", help="Show the Logbook", parents=[detailed_parent]
@@ -63,6 +65,4 @@ def register(subparsers, parents: dict) -> dict:
         dest="to_date",
         help="Show items completed on/before this date (YYYY-MM-DD)",
     )
-    from things_cloud.cli.common import _adapt_store_command
-
     return {"logbook": _adapt_store_command(cmd_logbook)}

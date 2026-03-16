@@ -11,6 +11,7 @@ from things_cloud.cli.common import (
     GREEN,
     DIM,
     ICONS,
+    CommandHandler,
     colored,
     fmt_task_line,
     fmt_project_line,
@@ -118,7 +119,7 @@ def cmd_schedule(
     )
 
 
-def register(subparsers, parents: dict) -> dict:
+def register(subparsers, parents: dict) -> dict[str, CommandHandler]:
     schedule_parser = subparsers.add_parser("schedule", help="Set when and deadline")
     schedule_parser.add_argument(
         "task_id",
@@ -140,8 +141,4 @@ def register(subparsers, parents: dict) -> dict:
         help="Clear existing deadline",
     )
 
-    def _run_schedule(store, args, client):
-        cmd_schedule(store, args, client)
-        return None
-
-    return {"schedule": _run_schedule}
+    return {"schedule": cmd_schedule}

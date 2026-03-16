@@ -9,6 +9,7 @@ from things_cloud.cli.common import (
     GREEN,
     DIM,
     ICONS,
+    CommandHandler,
     colored,
 )
 
@@ -32,7 +33,7 @@ def cmd_set_auth(_args: argparse.Namespace) -> int:
 SET_AUTH_COMMAND = "set-auth"
 
 
-def register(subparsers, parents: dict) -> dict:
+def register(subparsers, parents: dict) -> dict[str, CommandHandler]:
     subparsers.add_parser(SET_AUTH_COMMAND, help="Configure Things Cloud credentials")
     # set-auth is dispatched specially (no store/client), so we don't add it to COMMANDS
     return {}

@@ -10,6 +10,7 @@ from things_cloud.cli.common import (
     GREEN,
     DIM,
     ICONS,
+    CommandHandler,
     colored,
     fmt_task_line,
     fmt_project_line,
@@ -147,7 +148,7 @@ def cmd_edit(
     )
 
 
-def register(subparsers, parents: dict) -> dict:
+def register(subparsers, parents: dict) -> dict[str, CommandHandler]:
     edit_parser = subparsers.add_parser(
         "edit", help="Edit a task/project title, container, or notes"
     )
@@ -169,8 +170,4 @@ def register(subparsers, parents: dict) -> dict:
         help="Replace notes (use empty string to clear)",
     )
 
-    def _run_edit(store, args, client):
-        cmd_edit(store, args, client)
-        return None
-
-    return {"edit": _run_edit}
+    return {"edit": cmd_edit}
