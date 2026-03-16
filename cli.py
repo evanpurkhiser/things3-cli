@@ -17,6 +17,7 @@ Usage:
     things3 reorder <id> --before <id> | --after <id>
     things3 edit <task-id> [--title TEXT] [--move Inbox|clear|<project/area-id>] [--notes TEXT]
     things3 mark <task-id> --done|--incomplete|--canceled
+    things3 delete <id1> [<id2> ...]
 
 """
 
@@ -34,7 +35,7 @@ from things_cloud.auth import AuthConfigError, load_auth, write_auth
 from things_cloud.ids import random_task_id
 from things_cloud.log_cache import get_state_with_append_log
 from things_cloud.store import ThingsStore, Task, Area, Tag
-from things_cloud.schema import TaskProps, TaskStart, TaskStatus, TaskType
+from things_cloud.schema import ENTITY_AREA, TaskProps, TaskStart, TaskStatus, TaskType
 
 RECURRENCE_FIXED_SCHEDULE = 0
 RECURRENCE_AFTER_COMPLETION = 1
@@ -1756,6 +1757,102 @@ def cmd_mark(store: ThingsStore, args, client: ThingsCloudClient):
         print(colored(label, GREEN), f"{task.title}  {colored(task.uuid, DIM)}")
 
 
+def cmd_delete(store: ThingsStore, args, client: ThingsCloudClient):
+    """Delete one or more tasks/projects/headings/areas by UUID/prefix."""
+    targets: list[tuple[str, str, str]] = []  # (uuid, entity, title)
+    seen: set[str] = set()
+
+    for identifier in args.item_ids:
+        task, task_err, task_ambiguous = store.resolve_task_identifier(identifier)
+        area, area_err, area_ambiguous = store.resolve_area_identifier(identifier)
+
+        task_match = task is not None
+        area_match = area is not None
+
+        if task_match and area_match:
+            print(
+                f"Ambiguous identifier '{identifier}' (matches task and area).",
+                file=sys.stderr,
+            )
+            continue
+
+        if not task_match and not area_match:
+            if task_ambiguous and area_ambiguous:
+                print(
+                    f"Ambiguous identifier '{identifier}' (matches multiple tasks and areas).",
+                    file=sys.stderr,
+                )
+            elif task_ambiguous:
+                print(task_err, file=sys.stderr)
+            elif area_ambiguous:
+                print(area_err, file=sys.stderr)
+            else:
+                print(f"Item not found: {identifier}", file=sys.stderr)
+
+            if task_ambiguous:
+                id_prefix_len = store.unique_prefix_length(
+                    [t.uuid for t in task_ambiguous]
+                )
+                for match in task_ambiguous:
+                    if match.is_project:
+                        print(
+                            f"  {fmt_project_line(match, store, id_prefix_len=id_prefix_len)}"
+                        )
+                    else:
+                        print(
+                            f"  {fmt_task_line(match, store, show_project=True, id_prefix_len=id_prefix_len)}"
+                        )
+            if area_ambiguous:
+                id_prefix_len = store.unique_prefix_length(
+                    [a.uuid for a in area_ambiguous]
+                )
+                for match in area_ambiguous:
+                    print(
+                        f"  {_id_prefix(match.uuid, id_prefix_len)} {colored(f'{ICONS.area} {match.title}', BOLD)}"
+                    )
+            continue
+
+        if task_match:
+            assert task is not None
+            if task.trashed:
+                print(f"Item already deleted: {task.title}", file=sys.stderr)
+                continue
+            if task.uuid in seen:
+                continue
+            seen.add(task.uuid)
+            targets.append((task.uuid, task.entity, task.title))
+            continue
+
+        assert area is not None
+        if area.uuid in seen:
+            continue
+        seen.add(area.uuid)
+        targets.append((area.uuid, ENTITY_AREA, area.title))
+
+    if not targets:
+        return
+
+    updates = [
+        {
+            "uuid": uuid,
+            "entity": entity,
+        }
+        for uuid, entity, _title in targets
+    ]
+
+    try:
+        client.delete_items(updates)
+    except Exception as e:
+        print(f"Failed to delete items: {e}", file=sys.stderr)
+        return
+
+    for uuid, _entity, title in targets:
+        print(
+            colored(f"{ICONS.canceled} Deleted", GREEN),
+            f"{title}  {colored(uuid, DIM)}",
+        )
+
+
 def cmd_set_auth(_args):
     """Interactively configure Things Cloud credentials."""
     print("Configure Things Cloud authentication")
@@ -1817,6 +1914,13 @@ def _run_edit(store: ThingsStore, args: argparse.Namespace, client: ThingsCloudC
     return None
 
 
+def _run_delete(
+    store: ThingsStore, args: argparse.Namespace, client: ThingsCloudClient
+):
+    cmd_delete(store, args, client)
+    return None
+
+
 COMMANDS: dict[str, CommandHandler] = {
     "new": _run_new,
     "today": _adapt_store_command(cmd_today),
@@ -1831,6 +1935,7 @@ COMMANDS: dict[str, CommandHandler] = {
     "upcoming": _adapt_store_command(cmd_upcoming),
     "project": _adapt_store_command(cmd_project),
     "edit": _run_edit,
+    "delete": _run_delete,
     "schedule": _run_schedule,
     "reorder": _run_reorder,
     "mark": _run_mark,
@@ -1999,6 +2104,15 @@ def main():
     edit_parser.add_argument(
         "--notes",
         help="Replace notes (use empty string to clear)",
+    )
+
+    delete_parser = subparsers.add_parser(
+        "delete", help="Delete tasks/projects/headings/areas"
+    )
+    delete_parser.add_argument(
+        "item_ids",
+        nargs="+",
+        help="Task/Project/Heading/Area UUID(s) (or unique UUID prefixes)",
     )
 
     reorder_parser = subparsers.add_parser(

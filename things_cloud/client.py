@@ -220,3 +220,14 @@ class ThingsCloudClient:
         payload_props = dict(props)
         payload_props["md"] = time.time()
         return self.commit({task_uuid: {"e": entity, "p": payload_props}})
+
+    def delete_items(self, updates: list[dict]) -> int:
+        """Delete multiple entities in a single cloud commit (t=2)."""
+        changes: dict[str, dict] = {}
+        for item in updates:
+            changes[item["uuid"]] = {
+                "t": 2,
+                "e": item["entity"],
+                "p": {},
+            }
+        return self.commit(changes)
