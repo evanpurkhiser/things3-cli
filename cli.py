@@ -15,6 +15,7 @@ Usage:
     things3 tags
     things3 schedule <task-id> [--when today|someday|anytime|evening|YYYY-MM-DD]
     things3 reorder <id> --before <id> | --after <id>
+    things3 edit <task-id> [--title TEXT] [--move Inbox|clear|<project/area-id>] [--notes TEXT]
     things3 mark <task-id> --done|--incomplete|--canceled
 
 """
@@ -1296,6 +1297,134 @@ def cmd_schedule(store: ThingsStore, args, client: ThingsCloudClient):
     )
 
 
+def cmd_edit(store: ThingsStore, args, client: ThingsCloudClient):
+    """Edit one task/project: title, container, and notes."""
+    task, err, ambiguous = store.resolve_mark_identifier(args.task_id)
+    if not task:
+        print(err, file=sys.stderr)
+        if ambiguous:
+            id_prefix_len = store.unique_prefix_length([t.uuid for t in ambiguous])
+            for match in ambiguous:
+                if match.is_project:
+                    print(
+                        f"  {fmt_project_line(match, store, id_prefix_len=id_prefix_len)}"
+                    )
+                else:
+                    print(
+                        f"  {fmt_task_line(match, store, show_project=True, id_prefix_len=id_prefix_len)}"
+                    )
+        return
+
+    update: dict = {}
+    labels: list[str] = []
+
+    if args.title is not None:
+        title = args.title.strip()
+        if not title:
+            print("Task title cannot be empty.", file=sys.stderr)
+            return
+        update["tt"] = title
+        labels.append("title")
+
+    if args.notes is not None:
+        update["nt"] = (
+            _task6_note(args.notes)
+            if args.notes
+            else {"_t": "tx", "t": 1, "ch": 0, "v": ""}
+        )
+        labels.append("notes")
+
+    move_raw = (args.move_target or "").strip()
+    if move_raw:
+        move_l = move_raw.lower()
+        if move_l == "inbox":
+            if task.is_project:
+                print("Projects cannot be moved to Inbox.", file=sys.stderr)
+                return
+            update.update(
+                {
+                    "pr": [],
+                    "ar": [],
+                    "agr": [],
+                    "st": TaskStart.INBOX,
+                    "sr": None,
+                    "tir": None,
+                    "sb": 0,
+                }
+            )
+            labels.append("move=inbox")
+        elif move_l == "clear":
+            if task.is_project:
+                update["ar"] = []
+            else:
+                update.update({"pr": [], "ar": [], "agr": []})
+                if task.start == TaskStart.INBOX:
+                    update["st"] = TaskStart.ANYTIME
+            labels.append("move=clear")
+        else:
+            project, _perr, _pamb = store.resolve_mark_identifier(move_raw)
+            area, _aerr, _aamb = store.resolve_area_identifier(move_raw)
+
+            project_uuid = project.uuid if project and project.is_project else None
+            area_uuid = area.uuid if area else None
+
+            if project_uuid and area_uuid:
+                print(
+                    f"Ambiguous --move target '{move_raw}' (matches project and area).",
+                    file=sys.stderr,
+                )
+                return
+            if project and not project.is_project:
+                print(
+                    "--move target must be Inbox, clear, a project ID, or an area ID.",
+                    file=sys.stderr,
+                )
+                return
+            if task.is_project:
+                if project_uuid:
+                    print(
+                        "Projects can only be moved to an area or clear.",
+                        file=sys.stderr,
+                    )
+                    return
+                if area_uuid:
+                    update["ar"] = [area_uuid]
+                    labels.append(f"move={move_raw}")
+                else:
+                    print(f"Container not found: {move_raw}", file=sys.stderr)
+                    return
+            else:
+                if project_uuid:
+                    update.update({"pr": [project_uuid], "ar": [], "agr": []})
+                    if task.start == TaskStart.INBOX:
+                        update["st"] = TaskStart.ANYTIME
+                    labels.append(f"move={move_raw}")
+                elif area_uuid:
+                    update.update({"ar": [area_uuid], "pr": [], "agr": []})
+                    if task.start == TaskStart.INBOX:
+                        update["st"] = TaskStart.ANYTIME
+                    labels.append(f"move={move_raw}")
+                else:
+                    print(f"Container not found: {move_raw}", file=sys.stderr)
+                    return
+
+    if not update:
+        print("No edit changes requested.", file=sys.stderr)
+        return
+
+    try:
+        client.update_task_fields(task.uuid, update, entity=task.entity)
+    except Exception as e:
+        print(f"Failed to edit item: {e}", file=sys.stderr)
+        return
+
+    print(
+        colored(f"{ICONS.done} Edited", GREEN),
+        f"{(update.get('tt') or task.title)}  {colored(task.uuid, DIM)}",
+        colored(f"({', '.join(labels)})", DIM),
+    )
+
+
 def cmd_reorder(store: ThingsStore, args, client: ThingsCloudClient):
     """Reorder task/project/heading relative to another item."""
     item, err, ambiguous = store.resolve_task_identifier(args.item_id)
@@ -1683,6 +1812,11 @@ def _run_reorder(
     return None
 
 
+def _run_edit(store: ThingsStore, args: argparse.Namespace, client: ThingsCloudClient):
+    cmd_edit(store, args, client)
+    return None
+
+
 COMMANDS: dict[str, CommandHandler] = {
     "new": _run_new,
     "today": _adapt_store_command(cmd_today),
@@ -1696,6 +1830,7 @@ COMMANDS: dict[str, CommandHandler] = {
     "tags": _adapt_store_command(cmd_tags),
     "upcoming": _adapt_store_command(cmd_upcoming),
     "project": _adapt_store_command(cmd_project),
+    "edit": _run_edit,
     "schedule": _run_schedule,
     "reorder": _run_reorder,
     "mark": _run_mark,
@@ -1843,6 +1978,27 @@ def main():
         "--clear-deadline",
         action="store_true",
         help="Clear existing deadline",
+    )
+
+    edit_parser = subparsers.add_parser(
+        "edit", help="Edit a task/project title, container, or notes"
+    )
+    edit_parser.add_argument(
+        "task_id",
+        help="Task/Project UUID (or unique UUID prefix)",
+    )
+    edit_parser.add_argument(
+        "--title",
+        help="Replace title",
+    )
+    edit_parser.add_argument(
+        "--move",
+        dest="move_target",
+        help="Move to Inbox, clear, project UUID/prefix, or area UUID/prefix",
+    )
+    edit_parser.add_argument(
+        "--notes",
+        help="Replace notes (use empty string to clear)",
     )
 
     reorder_parser = subparsers.add_parser(

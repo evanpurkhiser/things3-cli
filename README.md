@@ -40,15 +40,15 @@ $ things3 today
 - [x] Mark multiple tasks at once (`mark --done <id1> <id2> ...`)
 - [ ] Show task details (notes, checklist items)
 - [ ] `add` — create tasks/projects with title, notes, tags, checklist items, project, area, dates
-- [ ] `edit` — modify existing tasks/projects
-  - [ ] Rename (title)
+- [x] `edit` — modify existing tasks/projects
+  - [x] Rename (title)
   - [ ] Set/remove tags
-  - [ ] Set/remove notes
+  - [x] Set/remove notes
   - [ ] Add/remove/toggle checklist items
   - [ ] Delete (trash)
   - [ ] Set/remove recurrence
 - [x] `schedule` — set when/start date, deadline, today/evening/someday
-- [ ] `move` — move tasks/projects between projects, areas, headings, inbox
+- [x] `move` — move tasks/projects between projects, areas, and inbox (`edit --move`)
 - [x] `reorder` — reorder tasks, projects, and headings within their lists
 - [x] Show `someday` list and `logbook` (completed tasks with date filtering)
 - [ ] Heading management — create/rename/delete/reorder headings within projects
