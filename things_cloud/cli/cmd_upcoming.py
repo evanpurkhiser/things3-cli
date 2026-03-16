@@ -14,7 +14,7 @@ from things_cloud.cli.common import (
     colored,
     detailed_parent,
     fmt_date,
-    print_tasks_grouped,
+    fmt_tasks_grouped,
     _day_to_timestamp,
     _adapt_store_command,
 )
@@ -55,12 +55,14 @@ def cmd_upcoming(store: ThingsStore, args: argparse.Namespace) -> None:
             return
         print()
         print(colored(f"  {day}", BOLD))
-        print_tasks_grouped(
-            grouped_tasks,
-            store,
-            indent="    ",
-            show_today_markers=True,
-            detailed=detailed,
+        print(
+            fmt_tasks_grouped(
+                grouped_tasks,
+                store,
+                indent="    ",
+                show_today_markers=True,
+                detailed=detailed,
+            )
         )
 
     for task in tasks:

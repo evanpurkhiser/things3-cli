@@ -14,7 +14,7 @@ from things_cloud.cli.common import (
     detailed_parent,
     fmt_task_line,
     fmt_date_local,
-    print_task_with_note,
+    fmt_task_with_note,
     _parse_day,
     _adapt_store_command,
 )
@@ -48,7 +48,7 @@ def cmd_logbook(store: ThingsStore, args: argparse.Namespace) -> None:
             print(colored(f"  {day}", BOLD))
             current_day = day
         line = fmt_task_line(task, store, show_project=True)
-        print_task_with_note(line, task, "    ", detailed=detailed)
+        print(fmt_task_with_note(line, task, "    ", detailed=detailed))
 
 
 def register(subparsers) -> dict[str, CommandHandler]:

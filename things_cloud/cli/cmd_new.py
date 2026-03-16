@@ -16,8 +16,7 @@ from things_cloud.cli.common import (
     ICONS,
     CommandHandler,
     colored,
-    fmt_task_line,
-    fmt_project_line,
+    fmt_resolve_error,
     _task6_note,
     _parse_day,
     _day_to_timestamp,
@@ -57,18 +56,7 @@ def cmd_new(
     if anchor_id:
         anchor, err, ambiguous = store.resolve_task_identifier(anchor_id)
         if not anchor:
-            print(err, file=sys.stderr)
-            if ambiguous:
-                id_prefix_len = store.unique_prefix_length([t.uuid for t in ambiguous])
-                for match in ambiguous:
-                    if match.is_project:
-                        print(
-                            f"  {fmt_project_line(match, store, id_prefix_len=id_prefix_len)}"
-                        )
-                    else:
-                        print(
-                            f"  {fmt_task_line(match, store, show_project=True, id_prefix_len=id_prefix_len)}"
-                        )
+            fmt_resolve_error(err, ambiguous, store)
             return
 
     in_target = (args.in_target or "inbox").strip()

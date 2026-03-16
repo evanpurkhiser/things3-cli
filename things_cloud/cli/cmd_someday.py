@@ -12,8 +12,8 @@ from things_cloud.cli.common import (
     colored,
     detailed_parent,
     fmt_task_line,
-    print_task_with_note,
-    print_project_with_note,
+    fmt_task_with_note,
+    fmt_project_with_note,
     _adapt_store_command,
 )
 
@@ -34,8 +34,10 @@ def cmd_someday(store: ThingsStore, args: argparse.Namespace) -> None:
     tasks = [item for item in items if not item.is_project]
 
     for item in projects:
-        print_project_with_note(
-            item, store, "  ", id_prefix_len=id_prefix_len, detailed=detailed
+        print(
+            fmt_project_with_note(
+                item, store, "  ", id_prefix_len=id_prefix_len, detailed=detailed
+            )
         )
 
     if projects and tasks:
@@ -48,8 +50,10 @@ def cmd_someday(store: ThingsStore, args: argparse.Namespace) -> None:
             show_today_markers=False,
             id_prefix_len=id_prefix_len,
         )
-        print_task_with_note(
-            line, item, "  ", id_prefix_len=id_prefix_len, detailed=detailed
+        print(
+            fmt_task_with_note(
+                line, item, "  ", id_prefix_len=id_prefix_len, detailed=detailed
+            )
         )
 
 

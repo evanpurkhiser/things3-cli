@@ -11,7 +11,7 @@ from things_cloud.cli.common import (
     CommandHandler,
     colored,
     detailed_parent,
-    print_tasks_grouped,
+    fmt_tasks_grouped,
     _adapt_store_command,
 )
 
@@ -27,8 +27,10 @@ def cmd_anytime(store: ThingsStore, args: argparse.Namespace) -> None:
 
     print(colored(f"{ICONS.anytime} Anytime  ({len(tasks)} tasks)", BOLD + CYAN))
     print()
-    print_tasks_grouped(
-        tasks, store, indent="  ", show_today_markers=True, detailed=detailed
+    print(
+        fmt_tasks_grouped(
+            tasks, store, indent="  ", show_today_markers=True, detailed=detailed
+        )
     )
 
 

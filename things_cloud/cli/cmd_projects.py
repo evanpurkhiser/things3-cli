@@ -24,7 +24,7 @@ from things_cloud.cli.common import (
     _parse_day,
     _day_to_timestamp,
     _resolve_tag_ids,
-    print_project_with_note,
+    fmt_project_with_note,
     _adapt_store_command,
 )
 
@@ -57,8 +57,10 @@ def cmd_projects(store: ThingsStore, args: argparse.Namespace) -> None:
     if no_area:
         print()
         for p in no_area:
-            print_project_with_note(
-                p, store, "  ", id_prefix_len=id_prefix_len, detailed=detailed
+            print(
+                fmt_project_with_note(
+                    p, store, "  ", id_prefix_len=id_prefix_len, detailed=detailed
+                )
             )
 
     for area_uuid, area_projects in by_area.items():
@@ -67,8 +69,10 @@ def cmd_projects(store: ThingsStore, args: argparse.Namespace) -> None:
         area_id = _id_prefix(area_uuid, id_prefix_len) if area_uuid else "?"
         print(f"  {area_id} {colored(area_title, BOLD)}")
         for p in area_projects:
-            print_project_with_note(
-                p, store, "    ", id_prefix_len=id_prefix_len, detailed=detailed
+            print(
+                fmt_project_with_note(
+                    p, store, "    ", id_prefix_len=id_prefix_len, detailed=detailed
+                )
             )
 
 

@@ -1,6 +1,7 @@
 """Shared formatting helpers, color constants, icons, and utilities."""
 
 import argparse
+import sys
 import zlib
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -281,18 +282,18 @@ def _checklist_icon(item: ChecklistItem) -> str:
     return colored(ICONS.checklist_open, DIM)
 
 
-def print_task_with_note(
+def fmt_task_with_note(
     line: str,
     task: Task,
     indent: str,
     show_today_markers: bool = False,
     id_prefix_len: Optional[int] = None,
     detailed: bool = False,
-):
-    """Print a formatted task line, and optionally its note beneath it."""
-    print(indent + line)
+) -> str:
+    """Return a formatted task line, and optionally its note beneath it."""
+    out = [indent + line]
     if not detailed:
-        return
+        return "\n".join(out)
 
     note_pad = indent + _note_indent(id_prefix_len)
     has_checklist = bool(task.checklist_items)
@@ -306,64 +307,73 @@ def print_task_with_note(
         col = id_prefix_len or 0
         if note_lines:
             for note_line in note_lines:
-                print(f"{indent}{' ' * col} {pipe} {colored(note_line, DIM)}")
-            print(f"{indent}{' ' * col} {pipe}")
+                out.append(f"{indent}{' ' * col} {pipe} {colored(note_line, DIM)}")
+            out.append(f"{indent}{' ' * col} {pipe}")
         for i, item in enumerate(items):
             connector = colored("└╴" if i == len(items) - 1 else "├╴", DIM)
             cl_id = colored(item.uuid[:cl_prefix_len].rjust(col), DIM)
-            print(f"{indent}{cl_id} {connector}{_checklist_icon(item)} {item.title}")
+            out.append(
+                f"{indent}{cl_id} {connector}{_checklist_icon(item)} {item.title}"
+            )
     elif note_lines:
         for note_line in note_lines[:-1]:
-            print(f"{note_pad}{pipe} {colored(note_line, DIM)}")
-        print(f"{note_pad}{colored('└', DIM)} {colored(note_lines[-1], DIM)}")
+            out.append(f"{note_pad}{pipe} {colored(note_line, DIM)}")
+        out.append(f"{note_pad}{colored('└', DIM)} {colored(note_lines[-1], DIM)}")
+
+    return "\n".join(out)
 
 
-def print_project_with_note(
+def fmt_project_with_note(
     project: Task,
     store: ThingsStore,
     indent: str,
     id_prefix_len: Optional[int] = None,
     show_indicators: bool = True,
     detailed: bool = False,
-):
-    """Print a formatted project line, and optionally its note beneath it."""
+) -> str:
+    """Return a formatted project line, and optionally its note beneath it."""
     line = fmt_project_line(
         project, store, show_indicators=show_indicators, id_prefix_len=id_prefix_len
     )
-    print(indent + line)
+    out = [indent + line]
     if detailed and project.notes:
         # align under the progress marker (id_prefix + space + marker)
         width = id_prefix_len + 1 if id_prefix_len else 0
         note_pad = indent + " " * width
         note_lines = project.notes.splitlines()
         for note_line in note_lines[:-1]:
-            print(f"{note_pad}{colored('│', DIM)} {colored(note_line, DIM)}")
-        print(f"{note_pad}{colored('└', DIM)} {colored(note_lines[-1], DIM)}")
+            out.append(f"{note_pad}{colored('│', DIM)} {colored(note_line, DIM)}")
+        out.append(f"{note_pad}{colored('└', DIM)} {colored(note_lines[-1], DIM)}")
+    return "\n".join(out)
 
 
-def print_section(
+def fmt_section(
     title: str, tasks: list[Task], store: ThingsStore, show_project: bool = False
-):
+) -> str:
     if not tasks:
-        return
-    print(colored(f"\n{title}", BOLD + CYAN))
-    print(colored(ICONS.divider * 40, DIM))
+        return ""
+    out = [
+        colored(f"\n{title}", BOLD + CYAN),
+        colored(ICONS.divider * 40, DIM),
+    ]
     for task in tasks:
-        print("  " + fmt_task_line(task, store, show_project=show_project))
+        out.append("  " + fmt_task_line(task, store, show_project=show_project))
+    return "\n".join(out)
 
 
-def print_tasks_grouped(
+def fmt_tasks_grouped(
     tasks: list[Task],
     store: ThingsStore,
     indent: str = "  ",
     show_today_markers: bool = False,
     id_prefix_len: Optional[int] = None,
     detailed: bool = False,
-):
-    """Print tasks grouped by area and project, preserving first-seen order."""
+) -> str:
+    """Return tasks grouped by area and project, preserving first-seen order."""
     max_group_items = 3
 
-    def print_limited_tasks(group_tasks: list[Task], task_indent: str):
+    def fmt_limited_tasks(group_tasks: list[Task], task_indent: str) -> list[str]:
+        out: list[str] = []
         shown = group_tasks[:max_group_items]
         for task in shown:
             line = fmt_task_line(
@@ -373,20 +383,23 @@ def print_tasks_grouped(
                 show_today_markers=show_today_markers,
                 id_prefix_len=id_prefix_len,
             )
-            print_task_with_note(
-                line,
-                task,
-                task_indent,
-                show_today_markers=show_today_markers,
-                id_prefix_len=id_prefix_len,
-                detailed=detailed,
+            out.append(
+                fmt_task_with_note(
+                    line,
+                    task,
+                    task_indent,
+                    show_today_markers=show_today_markers,
+                    id_prefix_len=id_prefix_len,
+                    detailed=detailed,
+                )
             )
         hidden = len(group_tasks) - len(shown)
         if hidden > 0:
-            print(colored(f"{task_indent}Hiding {hidden} more", DIM))
+            out.append(colored(f"{task_indent}Hiding {hidden} more", DIM))
+        return out
 
     if not tasks:
-        return
+        return ""
 
     unscoped: list[Task] = []
     project_only: dict[str, list[Task]] = {}
@@ -423,9 +436,10 @@ def print_tasks_grouped(
             ids.extend(area_group.projects.keys())
         id_prefix_len = store.unique_prefix_length(ids)
 
-    any_printed = False
+    sections: list[list[str]] = []
 
     if unscoped:
+        group: list[str] = []
         for task in unscoped:
             line = fmt_task_line(
                 task,
@@ -434,45 +448,42 @@ def print_tasks_grouped(
                 show_today_markers=show_today_markers,
                 id_prefix_len=id_prefix_len,
             )
-            print_task_with_note(
-                line,
-                task,
-                indent,
-                show_today_markers=show_today_markers,
-                id_prefix_len=id_prefix_len,
-                detailed=detailed,
+            group.append(
+                fmt_task_with_note(
+                    line,
+                    task,
+                    indent,
+                    show_today_markers=show_today_markers,
+                    id_prefix_len=id_prefix_len,
+                    detailed=detailed,
+                )
             )
-        any_printed = True
+        sections.append(group)
 
     for project_uuid, project_tasks in project_only.items():
-        if any_printed:
-            print()
         title = store.resolve_project_title(project_uuid)
-        print(
+        group = [
             f"{indent}{_id_prefix(project_uuid, id_prefix_len)} {colored(f'{ICONS.project} {title}', BOLD)}"
-        )
-        print_limited_tasks(project_tasks, indent + "  ")
-        any_printed = True
+        ]
+        group.extend(fmt_limited_tasks(project_tasks, indent + "  "))
+        sections.append(group)
 
     for area_uuid, area_group in by_area.items():
-        if any_printed:
-            print()
         area_title = store.resolve_area_title(area_uuid)
-        print(
+        group = [
             f"{indent}{_id_prefix(area_uuid, id_prefix_len)} {colored(f'{ICONS.area} {area_title}', BOLD)}"
-        )
-
-        print_limited_tasks(area_group.tasks, indent + "  ")
-
+        ]
+        group.extend(fmt_limited_tasks(area_group.tasks, indent + "  "))
         for project_uuid, project_tasks in area_group.projects.items():
-            print()
             project_title = store.resolve_project_title(project_uuid)
-            print(
+            group.append(
                 f"{indent}  {_id_prefix(project_uuid, id_prefix_len)} "
                 + colored(f"{ICONS.project} {project_title}", BOLD)
             )
-            print_limited_tasks(project_tasks, indent + "    ")
-        any_printed = True
+            group.extend(fmt_limited_tasks(project_tasks, indent + "    "))
+        sections.append(group)
+
+    return "\n\n".join("\n".join(section) for section in sections)
 
 
 # ---------------------------------------------------------------------------
@@ -497,6 +508,26 @@ def _day_to_timestamp(day: datetime) -> int:
 # ---------------------------------------------------------------------------
 # Tag resolution
 # ---------------------------------------------------------------------------
+
+
+def fmt_resolve_error(
+    err: str,
+    ambiguous: list[Task],
+    store: ThingsStore,
+) -> None:
+    """Print a resolution error and any ambiguous candidates to stderr."""
+    print(err, file=sys.stderr)
+    if ambiguous:
+        id_prefix_len = store.unique_prefix_length([t.uuid for t in ambiguous])
+        for match in ambiguous:
+            if match.is_project:
+                print(
+                    f"  {fmt_project_line(match, store, id_prefix_len=id_prefix_len)}"
+                )
+            else:
+                print(
+                    f"  {fmt_task_line(match, store, show_project=True, id_prefix_len=id_prefix_len)}"
+                )
 
 
 def _resolve_tag_ids(store: ThingsStore, raw_tags: str) -> tuple[list[str], str]:

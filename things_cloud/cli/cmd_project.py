@@ -15,7 +15,8 @@ from things_cloud.cli.common import (
     fmt_task_line,
     fmt_project_line,
     fmt_deadline,
-    print_task_with_note,
+    fmt_task_with_note,
+    fmt_resolve_error,
     _adapt_store_command,
 )
 
@@ -25,18 +26,7 @@ def cmd_project(store: ThingsStore, args: argparse.Namespace) -> None:
     detailed = args.detailed
     task, err, ambiguous = store.resolve_mark_identifier(args.project_id)
     if not task:
-        print(err, file=sys.stderr)
-        if ambiguous:
-            id_prefix_len = store.unique_prefix_length([t.uuid for t in ambiguous])
-            for match in ambiguous:
-                if match.is_project:
-                    print(
-                        f"  {fmt_project_line(match, store, id_prefix_len=id_prefix_len)}"
-                    )
-                else:
-                    print(
-                        f"  {fmt_task_line(match, store, show_project=True, id_prefix_len=id_prefix_len)}"
-                    )
+        fmt_resolve_error(err, ambiguous, store)
         return
     if not task.is_project:
         print(f"Not a project: {task.title}", file=sys.stderr)
@@ -114,13 +104,15 @@ def cmd_project(store: ThingsStore, args: argparse.Namespace) -> None:
             line = fmt_task_line(
                 t, store, show_today_markers=True, id_prefix_len=id_prefix_len
             )
-            print_task_with_note(
-                line,
-                t,
-                "  ",
-                show_today_markers=True,
-                id_prefix_len=id_prefix_len,
-                detailed=detailed,
+            print(
+                fmt_task_with_note(
+                    line,
+                    t,
+                    "  ",
+                    show_today_markers=True,
+                    id_prefix_len=id_prefix_len,
+                    detailed=detailed,
+                )
             )
 
     # Then heading groups
@@ -133,13 +125,15 @@ def cmd_project(store: ThingsStore, args: argparse.Namespace) -> None:
             line = fmt_task_line(
                 t, store, show_today_markers=True, id_prefix_len=id_prefix_len
             )
-            print_task_with_note(
-                line,
-                t,
-                "    ",
-                show_today_markers=True,
-                id_prefix_len=id_prefix_len,
-                detailed=detailed,
+            print(
+                fmt_task_with_note(
+                    line,
+                    t,
+                    "    ",
+                    show_today_markers=True,
+                    id_prefix_len=id_prefix_len,
+                    detailed=detailed,
+                )
             )
 
 

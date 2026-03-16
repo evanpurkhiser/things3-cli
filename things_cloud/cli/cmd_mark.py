@@ -13,8 +13,7 @@ from things_cloud.cli.common import (
     ICONS,
     CommandHandler,
     colored,
-    fmt_task_line,
-    fmt_project_line,
+    fmt_resolve_error,
     RECURRENCE_FIXED_SCHEDULE,
     RECURRENCE_AFTER_COMPLETION,
 )
@@ -150,18 +149,7 @@ def cmd_mark(
 
         task, err, ambiguous = store.resolve_mark_identifier(args.task_ids[0])
         if not task:
-            print(err, file=sys.stderr)
-            if ambiguous:
-                id_prefix_len = store.unique_prefix_length([t.uuid for t in ambiguous])
-                for match in ambiguous:
-                    if match.is_project:
-                        print(
-                            f"  {fmt_project_line(match, store, id_prefix_len=id_prefix_len)}"
-                        )
-                    else:
-                        print(
-                            f"  {fmt_task_line(match, store, show_project=True, id_prefix_len=id_prefix_len)}"
-                        )
+            fmt_resolve_error(err, ambiguous, store)
             return
 
         if not task.checklist_items:
@@ -217,18 +205,7 @@ def cmd_mark(
     for identifier in args.task_ids:
         task, err, ambiguous = store.resolve_mark_identifier(identifier)
         if not task:
-            print(err, file=sys.stderr)
-            if ambiguous:
-                id_prefix_len = store.unique_prefix_length([t.uuid for t in ambiguous])
-                for match in ambiguous:
-                    if match.is_project:
-                        print(
-                            f"  {fmt_project_line(match, store, id_prefix_len=id_prefix_len)}"
-                        )
-                    else:
-                        print(
-                            f"  {fmt_task_line(match, store, show_project=True, id_prefix_len=id_prefix_len)}"
-                        )
+            fmt_resolve_error(err, ambiguous, store)
             continue
         if task.uuid in seen:
             continue

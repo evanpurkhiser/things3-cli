@@ -13,8 +13,8 @@ from things_cloud.cli.common import (
     colored,
     detailed_parent,
     fmt_task_line,
-    print_task_with_note,
-    print_project_with_note,
+    fmt_task_with_note,
+    fmt_project_with_note,
     _adapt_store_command,
 )
 
@@ -62,13 +62,15 @@ def cmd_today(store: ThingsStore, args: argparse.Namespace) -> None:
         print()
         for item in regular:
             if item.is_project:
-                print_project_with_note(
-                    item,
-                    store,
-                    "  ",
-                    show_indicators=False,
-                    id_prefix_len=id_prefix_len,
-                    detailed=detailed,
+                print(
+                    fmt_project_with_note(
+                        item,
+                        store,
+                        "  ",
+                        show_indicators=False,
+                        id_prefix_len=id_prefix_len,
+                        detailed=detailed,
+                    )
                 )
             else:
                 line = fmt_task_line(
@@ -77,8 +79,10 @@ def cmd_today(store: ThingsStore, args: argparse.Namespace) -> None:
                     show_today_markers=False,
                     id_prefix_len=id_prefix_len,
                 )
-                print_task_with_note(
-                    line, item, "  ", id_prefix_len=id_prefix_len, detailed=detailed
+                print(
+                    fmt_task_with_note(
+                        line, item, "  ", id_prefix_len=id_prefix_len, detailed=detailed
+                    )
                 )
 
     if evening:
@@ -87,13 +91,15 @@ def cmd_today(store: ThingsStore, args: argparse.Namespace) -> None:
         print()
         for item in evening:
             if item.is_project:
-                print_project_with_note(
-                    item,
-                    store,
-                    "  ",
-                    show_indicators=False,
-                    id_prefix_len=id_prefix_len,
-                    detailed=detailed,
+                print(
+                    fmt_project_with_note(
+                        item,
+                        store,
+                        "  ",
+                        show_indicators=False,
+                        id_prefix_len=id_prefix_len,
+                        detailed=detailed,
+                    )
                 )
             else:
                 line = fmt_task_line(
@@ -102,8 +108,10 @@ def cmd_today(store: ThingsStore, args: argparse.Namespace) -> None:
                     show_today_markers=False,
                     id_prefix_len=id_prefix_len,
                 )
-                print_task_with_note(
-                    line, item, "  ", id_prefix_len=id_prefix_len, detailed=detailed
+                print(
+                    fmt_task_with_note(
+                        line, item, "  ", id_prefix_len=id_prefix_len, detailed=detailed
+                    )
                 )
 
 

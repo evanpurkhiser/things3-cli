@@ -13,8 +13,7 @@ from things_cloud.cli.common import (
     ICONS,
     CommandHandler,
     colored,
-    fmt_task_line,
-    fmt_project_line,
+    fmt_resolve_error,
     _parse_day,
     _day_to_timestamp,
 )
@@ -26,18 +25,7 @@ def cmd_schedule(
     """Schedule one task/project: when/today/evening/someday/deadline."""
     task, err, ambiguous = store.resolve_mark_identifier(args.task_id)
     if not task:
-        print(err, file=sys.stderr)
-        if ambiguous:
-            id_prefix_len = store.unique_prefix_length([t.uuid for t in ambiguous])
-            for match in ambiguous:
-                if match.is_project:
-                    print(
-                        f"  {fmt_project_line(match, store, id_prefix_len=id_prefix_len)}"
-                    )
-                else:
-                    print(
-                        f"  {fmt_task_line(match, store, show_project=True, id_prefix_len=id_prefix_len)}"
-                    )
+        fmt_resolve_error(err, ambiguous, store)
         return
 
     update: dict = {}
