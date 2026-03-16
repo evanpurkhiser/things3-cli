@@ -118,6 +118,15 @@ def _task6_note(value: str) -> dict:
     return {"_t": "tx", "t": 1, "ch": checksum, "v": payload}
 
 
+def fmt_deadline(deadline: Optional[datetime]) -> str:
+    """Format a deadline as a colored '⚑ due by YYYY-MM-DD' string, red if overdue."""
+    if not deadline:
+        return ""
+    now = datetime.now(tz=timezone.utc)
+    color = RED if deadline < now else YELLOW
+    return colored(f" {ICONS.deadline} due by {fmt_date(deadline)}", color)
+
+
 def _task_box(task: Task) -> str:
     if task.is_completed:
         return ICONS.task_done
@@ -175,12 +184,7 @@ def fmt_task_line(
 
     # Deadline
     if task.deadline:
-        now = datetime.now(tz=timezone.utc)
-        overdue = task.deadline < now
-        color = RED if overdue else YELLOW
-        parts.append(
-            colored(f" {ICONS.deadline} due by {fmt_date(task.deadline)}", color)
-        )
+        parts.append(fmt_deadline(task.deadline))
 
     line = " ".join(parts) if parts else title
     if id_prefix_len and id_prefix_len > 0:
@@ -608,11 +612,7 @@ def fmt_project_line(
 ) -> str:
     """Format a single project for terminal output."""
     title = project.title or colored("(untitled)", DIM)
-    dl = (
-        colored(f" {ICONS.deadline} {fmt_date(project.deadline)}", YELLOW)
-        if project.deadline
-        else ""
-    )
+    dl = fmt_deadline(project.deadline)
 
     if project.in_someday:
         marker = ICONS.anytime
@@ -924,6 +924,7 @@ def cmd_project(store: ThingsStore, args):
             f"{ICONS.project} {project.title}  ({done_count}/{done_count + total})",
             BOLD + GREEN,
         )
+        + fmt_deadline(project.deadline)
         + tags
     )
     if project.notes:
