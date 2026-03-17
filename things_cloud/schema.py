@@ -408,7 +408,7 @@ class TagProps:
     """Sort index."""
 
     pn: list[str] = field(default_factory=list)
-    """Parent tag names (for nested tags). Usually []."""
+    """Parent tag UUIDs (for nested tags). Usually []. Contains at most one element."""
 
     xx: Optional[dict] = None
     """CRDT conflict overrides."""

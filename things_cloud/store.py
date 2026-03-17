@@ -70,6 +70,7 @@ class Tag:
     title: str
     shortcut: Optional[str] = None
     index: int = 0
+    parent_uuid: Optional[str] = None
 
 
 @dataclass
@@ -381,11 +382,13 @@ class ThingsStore:
         )
 
     def _parse_tag(self, uuid: str, p: dict) -> Tag:
+        pn = p.get("pn") or []
         return Tag(
             uuid=uuid,
             title=p.get("tt") or "",
             shortcut=p.get("sh"),
             index=p.get("ix", 0),
+            parent_uuid=pn[0] if pn else None,
         )
 
     # --- Query API ---

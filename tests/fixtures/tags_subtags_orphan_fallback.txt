@@ -1,0 +1,8 @@
+# Tags  (6)
+
+  # Places
+  ├╴# Cafe
+  ├╴# Restaurant
+  └╴# Bar
+  # Orphan
+  # Errands
