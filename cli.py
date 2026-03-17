@@ -109,10 +109,16 @@ def main():
 
     args = parser.parse_args()
 
-    # Default to today when no command is given
+    # Default to today when no command is given — re-parse with "today" so the
+    # today subparser runs and populates its defaults (e.g. --detailed) correctly.
+    # Preserve any global flags (--no-color, --no-sync) that were already parsed.
     if args.command is None:
-        args.command = "today"
-        args.detailed = False
+        extra = []
+        if args.no_color:
+            extra.append("--no-color")
+        if args.no_sync:
+            extra.append("--no-sync")
+        args = parser.parse_args([*extra, "today"])
 
     if args.command == SET_AUTH_COMMAND:
         rc = cmd_set_auth(args)
