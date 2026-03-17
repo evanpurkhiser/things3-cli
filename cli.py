@@ -112,6 +112,7 @@ def main():
     # Default to today when no command is given
     if args.command is None:
         args.command = "today"
+        args.detailed = False
 
     if args.command == SET_AUTH_COMMAND:
         rc = cmd_set_auth(args)

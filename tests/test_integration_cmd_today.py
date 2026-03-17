@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from tests.helpers import get_fixture, run_cli
+from tests.mutating_fixtures import store
 
 
 def _today_ts() -> int:
@@ -153,3 +154,8 @@ def test_today_detailed_with_notes_and_checklist(store_from_journal) -> None:
 
     store = store_from_journal(journal)
     assert run_cli("today --detailed", store) == get_fixture("today_detailed")
+
+
+def test_no_args_defaults_to_today() -> None:
+    """Invoking with no arguments should show the Today view without error."""
+    assert "No tasks for today." in run_cli("", store())
