@@ -86,3 +86,31 @@ def test_cannot_reorder_relative_to_self() -> None:
     result = run_cli_mutating_http(f"reorder {TASK_A} --before {TASK_A}", test_store)
     assert_no_commits(result)
     assert result.stderr == "Cannot reorder an item relative to itself.\n"
+
+
+def test_cannot_reorder_across_different_containers() -> None:
+    test_store = store(
+        task(TASK_A, "Inbox task", st=0, ix=100),
+        task(TASK_B, "Project task", st=1, pr=[TASK_C], ix=200),
+        task(TASK_C, "Project", tp=1, st=1, ix=10),
+    )
+    result = run_cli_mutating_http(
+        f"reorder {TASK_A} --before {TASK_B}",
+        test_store,
+    )
+    assert_no_commits(result)
+    assert result.stderr == "Cannot reorder across different containers/lists.\n"
+
+
+def test_anchor_not_in_selected_list_is_rejected() -> None:
+    test_store = store(
+        task(TASK_A, "Open", st=0, ss=0, ix=100),
+        task(TASK_B, "Done anchor", st=0, ss=3, ix=200),
+        task(TASK_C, "Other open", st=0, ss=0, ix=300),
+    )
+    result = run_cli_mutating_http(
+        f"reorder {TASK_A} --after {TASK_B}",
+        test_store,
+    )
+    assert_no_commits(result)
+    assert result.stderr == "Cannot reorder item in the selected list.\n"

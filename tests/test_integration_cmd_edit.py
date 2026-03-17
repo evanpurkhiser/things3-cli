@@ -156,3 +156,50 @@ def test_project_cannot_move_to_inbox() -> None:
     )
     assert_no_commits(result)
     assert result.stderr == "Projects cannot be moved to Inbox.\n"
+
+
+def test_move_target_must_be_project_or_area() -> None:
+    test_store = store(
+        task(TASK_UUID, "Movable"),
+        task(PROJECT_UUID, "Not a project", tp=0),
+    )
+    result = run_cli_mutating_http(
+        f"edit {TASK_UUID} --move {PROJECT_UUID}",
+        test_store,
+    )
+    assert_no_commits(result)
+    assert (
+        result.stderr
+        == "--move target must be Inbox, clear, a project ID, or an area ID.\n"
+    )
+
+
+def test_project_move_target_cannot_be_project() -> None:
+    target_project = "JFdhhhp37fpryAKu8UXwzK"
+    result = run_cli_mutating_http(
+        f"edit {PROJECT_UUID} --move {target_project}",
+        store(
+            project(PROJECT_UUID, "Roadmap"),
+            project(target_project, "Other project"),
+        ),
+    )
+    assert_no_commits(result)
+    assert result.stderr == "Projects can only be moved to an area or clear.\n"
+
+
+def test_move_target_ambiguous_between_project_and_area() -> None:
+    ambiguous_project = "ABCD1234efgh5678JKLMno"
+    ambiguous_area = "ABCD1234pqrs9123TUVWxy"
+    result = run_cli_mutating_http(
+        f"edit {TASK_UUID} --move ABCD1234",
+        store(
+            task(TASK_UUID, "Movable"),
+            project(ambiguous_project, "Project match"),
+            area(ambiguous_area, "Area match"),
+        ),
+    )
+    assert_no_commits(result)
+    assert (
+        result.stderr
+        == "Ambiguous --move target 'ABCD1234' (matches project and area).\n"
+    )
