@@ -12,6 +12,7 @@ from tests.mutating_http_helpers import (
 
 NOW = 1_700_000_222.0
 TASK_UUID = "A7h5eCi24RvAWKC3Hv3muf"
+TASK_UUID2 = "3H9jsMx3kYMrQ4M7DReSRn"
 PROJECT_UUID = "KGvAPpMrzHAKMdgMiERP1V"
 AREA_UUID = "MpkEei6ybkFS2n6SXvwfLf"
 
@@ -141,6 +142,52 @@ def test_move_targets_payload() -> None:
             }
         },
     )
+
+
+def test_multi_id_move_sends_single_commit() -> None:
+    test_store = store(
+        task(TASK_UUID, "Task One", st=0),
+        task(TASK_UUID2, "Task Two", st=0),
+        project(PROJECT_UUID, "Roadmap"),
+    )
+    result = run_cli_mutating_http(
+        f"edit {TASK_UUID} {TASK_UUID2} --move {PROJECT_UUID}",
+        test_store,
+        extra_patches=[p("things_cloud.client.time.time", return_value=NOW)],
+    )
+    assert_commit_payloads(
+        result,
+        {
+            TASK_UUID: {
+                "t": 1,
+                "e": "Task6",
+                "p": {"pr": [PROJECT_UUID], "ar": [], "agr": [], "st": 1, "md": NOW},
+            },
+            TASK_UUID2: {
+                "t": 1,
+                "e": "Task6",
+                "p": {"pr": [PROJECT_UUID], "ar": [], "agr": [], "st": 1, "md": NOW},
+            },
+        },
+    )
+
+
+def test_multi_id_title_is_rejected() -> None:
+    result = run_cli_mutating_http(
+        f'edit {TASK_UUID} {TASK_UUID2} --title "New"',
+        store(task(TASK_UUID, "A"), task(TASK_UUID2, "B")),
+    )
+    assert_no_commits(result)
+    assert result.stderr == "--title requires a single task ID.\n"
+
+
+def test_multi_id_notes_is_rejected() -> None:
+    result = run_cli_mutating_http(
+        f'edit {TASK_UUID} {TASK_UUID2} --notes "note"',
+        store(task(TASK_UUID, "A"), task(TASK_UUID2, "B")),
+    )
+    assert_no_commits(result)
+    assert result.stderr == "--notes requires a single task ID.\n"
 
 
 def test_no_changes_requested_is_rejected() -> None:
