@@ -1,8 +1,8 @@
-# Tags  (6)
+⌗ Tags  (6)
 
-  # Places
-  ├╴# Restaurants
-  │ ├╴# Fine Dining
-  │ └╴# Casual
-  └╴# Cafes
-  # Errands
+  ⌗ Places
+  ├╴⌗ Restaurants
+  │ ├╴⌗ Fine Dining
+  │ └╴⌗ Casual
+  └╴⌗ Cafes
+  ⌗ Errands

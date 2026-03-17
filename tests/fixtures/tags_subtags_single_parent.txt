@@ -1,6 +1,6 @@
-# Tags  (4)
+⌗ Tags  (4)
 
-  # Work
-  ├╴# Meetings
-  └╴# Projects
-  # Personal
+  ⌗ Work
+  ├╴⌗ Meetings
+  └╴⌗ Projects
+  ⌗ Personal

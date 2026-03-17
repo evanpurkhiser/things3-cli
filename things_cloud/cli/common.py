@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Callable, Optional
 
 from things_cloud.client import ThingsCloudClient
-from things_cloud.store import ThingsStore, Task, ChecklistItem
+from things_cloud.store import ThingsStore, Task, Tag, ChecklistItem
 
 RECURRENCE_FIXED_SCHEDULE = 0
 RECURRENCE_AFTER_COMPLETION = 1
@@ -55,8 +55,8 @@ class _Icons:
 
     # Entity icons
     project: str = "●"
-    area: str = "▤"
-    tag: str = "#"
+    area: str = "◆"
+    tag: str = "⌗"
     inbox: str = "⬓"
     anytime: str = "◌"
     upcoming: str = "▷"
@@ -528,6 +528,31 @@ def fmt_resolve_error(
                 print(
                     f"  {fmt_task_line(match, store, show_project=True, id_prefix_len=id_prefix_len)}"
                 )
+
+
+def _resolve_single_tag(
+    store: ThingsStore, identifier: str
+) -> tuple[Optional[Tag], str]:
+    """Resolve a single tag by title or UUID prefix.
+
+    Returns ``(tag, error_message)``. On success tag is set and error is empty.
+    """
+    identifier = identifier.strip()
+    all_tags = store.tags()
+
+    exact = [t for t in all_tags if t.title.lower() == identifier.lower()]
+    if len(exact) == 1:
+        return exact[0], ""
+    if len(exact) > 1:
+        return None, f"Ambiguous tag title: {identifier}"
+
+    prefix = [t for t in all_tags if t.uuid.startswith(identifier)]
+    if len(prefix) == 1:
+        return prefix[0], ""
+    if len(prefix) > 1:
+        return None, f"Ambiguous tag UUID prefix: {identifier}"
+
+    return None, f"Tag not found: {identifier}"
 
 
 def _resolve_tag_ids(store: ThingsStore, raw_tags: str) -> tuple[list[str], str]:

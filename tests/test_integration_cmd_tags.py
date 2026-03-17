@@ -1,4 +1,15 @@
 from tests.helpers import get_fixture, run_cli
+from tests.mutating_fixtures import store, tag
+from tests.mutating_http_helpers import (
+    assert_commit_payloads,
+    assert_no_commits,
+    p,
+    run_cli_mutating_http,
+)
+
+NOW = 1_700_000_222.0
+TAG_UUID = "AAAAAAAAAAAAAAAAAAAparent"
+CHILD_UUID = "BBBBBBBBBBBBBBBBBBBchild1"
 
 
 def _tag_create(
@@ -108,3 +119,172 @@ def test_tags_filters_blank_and_whitespace_titles(store_from_journal) -> None:
     assert run_cli("tags", store_from_journal(journal)) == get_fixture(
         "tags_filter_blank_titles"
     )
+
+
+NEW_UUID = "CCCCCCCCCCCCCCCCCCCnewuuid"
+
+
+def test_tags_new_payload() -> None:
+    result = run_cli_mutating_http(
+        'tags new "Focus"',
+        store(),
+        extra_patches=[
+            p("things_cloud.cli.cmd_tags.random_task_id", return_value=NEW_UUID),
+        ],
+    )
+    assert_commit_payloads(
+        result,
+        {
+            NEW_UUID: {
+                "t": 0,
+                "e": "Tag4",
+                "p": {"tt": "Focus", "ix": 0, "xx": {"_t": "oo", "sn": {}}},
+            }
+        },
+    )
+
+
+def test_tags_new_with_parent_payload() -> None:
+    result = run_cli_mutating_http(
+        f'tags new "Meetings" --parent Work',
+        store(tag(TAG_UUID, "Work")),
+        extra_patches=[
+            p("things_cloud.cli.cmd_tags.random_task_id", return_value=NEW_UUID),
+        ],
+    )
+    assert_commit_payloads(
+        result,
+        {
+            NEW_UUID: {
+                "t": 0,
+                "e": "Tag4",
+                "p": {
+                    "tt": "Meetings",
+                    "ix": 0,
+                    "xx": {"_t": "oo", "sn": {}},
+                    "pn": [TAG_UUID],
+                },
+            }
+        },
+    )
+
+
+def test_tags_new_empty_name_is_rejected() -> None:
+    result = run_cli_mutating_http('tags new "  "', store())
+    assert_no_commits(result)
+    assert result.stderr == "Tag name cannot be empty.\n"
+
+
+def test_tags_new_unknown_parent_is_rejected() -> None:
+    result = run_cli_mutating_http('tags new "Meetings" --parent nonexistent', store())
+    assert_no_commits(result)
+    assert result.stderr == "Tag not found: nonexistent\n"
+
+
+def test_tags_edit_rename_payload() -> None:
+    result = run_cli_mutating_http(
+        f'tags edit {TAG_UUID} --name "Work Stuff"',
+        store(tag(TAG_UUID, "Work")),
+        extra_patches=[p("things_cloud.client.time.time", return_value=NOW)],
+    )
+    assert_commit_payloads(
+        result,
+        {TAG_UUID: {"t": 1, "e": "Tag4", "p": {"tt": "Work Stuff", "md": NOW}}},
+    )
+
+
+def test_tags_edit_rename_by_title() -> None:
+    result = run_cli_mutating_http(
+        'tags edit Work --name "Work Stuff"',
+        store(tag(TAG_UUID, "Work")),
+        extra_patches=[p("things_cloud.client.time.time", return_value=NOW)],
+    )
+    assert_commit_payloads(
+        result,
+        {TAG_UUID: {"t": 1, "e": "Tag4", "p": {"tt": "Work Stuff", "md": NOW}}},
+    )
+
+
+def test_tags_edit_reparent_payload() -> None:
+    result = run_cli_mutating_http(
+        f"tags edit {CHILD_UUID} --move {TAG_UUID}",
+        store(tag(TAG_UUID, "Work"), tag(CHILD_UUID, "Meetings")),
+        extra_patches=[p("things_cloud.client.time.time", return_value=NOW)],
+    )
+    assert_commit_payloads(
+        result,
+        {CHILD_UUID: {"t": 1, "e": "Tag4", "p": {"pn": [TAG_UUID], "md": NOW}}},
+    )
+
+
+def test_tags_edit_reparent_by_title() -> None:
+    result = run_cli_mutating_http(
+        "tags edit Meetings --move Work",
+        store(tag(TAG_UUID, "Work"), tag(CHILD_UUID, "Meetings")),
+        extra_patches=[p("things_cloud.client.time.time", return_value=NOW)],
+    )
+    assert_commit_payloads(
+        result,
+        {CHILD_UUID: {"t": 1, "e": "Tag4", "p": {"pn": [TAG_UUID], "md": NOW}}},
+    )
+
+
+def test_tags_edit_clear_parent_payload() -> None:
+    result = run_cli_mutating_http(
+        f"tags edit {CHILD_UUID} --move clear",
+        store(tag(TAG_UUID, "Work"), tag(CHILD_UUID, "Meetings", pn=[TAG_UUID])),
+        extra_patches=[p("things_cloud.client.time.time", return_value=NOW)],
+    )
+    assert_commit_payloads(
+        result,
+        {CHILD_UUID: {"t": 1, "e": "Tag4", "p": {"pn": [], "md": NOW}}},
+    )
+
+
+def test_tags_edit_no_changes_is_rejected() -> None:
+    result = run_cli_mutating_http(
+        f"tags edit {TAG_UUID}",
+        store(tag(TAG_UUID, "Work")),
+    )
+    assert_no_commits(result)
+    assert result.stderr == "No edit changes requested.\n"
+
+
+def test_tags_edit_self_parent_is_rejected() -> None:
+    result = run_cli_mutating_http(
+        f"tags edit {TAG_UUID} --move {TAG_UUID}",
+        store(tag(TAG_UUID, "Work")),
+    )
+    assert_no_commits(result)
+    assert result.stderr == "A tag cannot be its own parent.\n"
+
+
+def test_tags_delete_by_uuid_payload() -> None:
+    result = run_cli_mutating_http(
+        f"tags delete {TAG_UUID}",
+        store(tag(TAG_UUID, "Work")),
+    )
+    assert_commit_payloads(
+        result,
+        {TAG_UUID: {"t": 2, "e": "Tag4", "p": {}}},
+    )
+
+
+def test_tags_delete_by_title() -> None:
+    result = run_cli_mutating_http(
+        "tags delete Work",
+        store(tag(TAG_UUID, "Work")),
+    )
+    assert_commit_payloads(
+        result,
+        {TAG_UUID: {"t": 2, "e": "Tag4", "p": {}}},
+    )
+
+
+def test_tags_delete_not_found() -> None:
+    result = run_cli_mutating_http(
+        "tags delete nonexistent",
+        store(tag(TAG_UUID, "Work")),
+    )
+    assert_no_commits(result)
+    assert result.stderr == "Tag not found: nonexistent\n"
