@@ -1,5 +1,7 @@
 # things3
 
+[![Tests](https://github.com/evanpurkhiser/things3-cli/actions/workflows/tests.yml/badge.svg)](https://github.com/evanpurkhiser/things3-cli/actions/workflows/tests.yml)
+
 > [!NOTE]
 > This project is written completely using Claude. No review of the code has been done.
 
