@@ -543,6 +543,35 @@ def fmt_resolve_error(
                 )
 
 
+def _resolve_checklist_items(
+    task: "Task", raw_ids: str
+) -> tuple[list["ChecklistItem"], str]:
+    """Resolve comma-separated short ID prefixes against a task's checklist items.
+
+    Returns (matched_items, error_message). Error is non-empty on any failure.
+    """
+    tokens = [t.strip() for t in raw_ids.split(",") if t.strip()]
+    if not tokens:
+        return [], "No checklist item IDs provided."
+
+    items = task.checklist_items
+    resolved: list[ChecklistItem] = []
+    seen: set[str] = set()
+
+    for token in tokens:
+        matches = [item for item in items if item.uuid.startswith(token)]
+        if not matches:
+            return [], f"Checklist item not found: {token!r}"
+        if len(matches) > 1:
+            return [], f"Ambiguous checklist item prefix: {token!r}"
+        item = matches[0]
+        if item.uuid not in seen:
+            seen.add(item.uuid)
+            resolved.append(item)
+
+    return resolved, ""
+
+
 def _apply_tag_changes(
     current_tags: list[str],
     add_raw: Optional[str],

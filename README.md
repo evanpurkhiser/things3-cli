@@ -87,12 +87,12 @@ uvx --from "git+https://github.com/evanpurkhiser/things3-cli" things3 --help
 **Tasks**
 - [x] `new` — create tasks with title, notes, tags, when, deadline, position
 - [x] `edit` — rename, set/remove notes, move, add/remove tags (supports multiple IDs)
+- [x] `edit --add-checklist/--remove-checklist/--rename-checklist` — manage checklist items
 - [x] `mark` — set status to done/incomplete/canceled (supports multiple IDs)
 - [x] `mark --check/--uncheck/--check-cancel` — toggle checklist items by short ID
 - [x] `schedule` — set when/start date, deadline, today/evening/someday
 - [x] `reorder` — reorder within lists
 - [x] `delete` — trash tasks
-- [ ] Add/remove checklist items via `edit` (toggle supported via `mark`)
 - [ ] Set/remove recurrence via `edit`
 
 **Projects**

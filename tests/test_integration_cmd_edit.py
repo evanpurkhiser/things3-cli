@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from things_cloud.cli.common import _task6_note
-from tests.mutating_fixtures import area, project, store, tag, task
+from tests.mutating_fixtures import area, checklist, project, store, tag, task
 from tests.mutating_http_helpers import (
     assert_commit_payloads,
     assert_no_commits,
@@ -253,6 +253,113 @@ def test_add_tags_multi_id_single_commit() -> None:
             TASK_UUID: {"t": 1, "e": "Task6", "p": {"tg": [TAG1], "md": NOW}},
             TASK_UUID2: {"t": 1, "e": "Task6", "p": {"tg": [TAG1], "md": NOW}},
         },
+    )
+
+
+CHECK_A = "5uwoHPi5m5i8QJa6Rae6Cn"
+CHECK_B = "CwhFwmHxjHkR7AFn9aJH9Q"
+NEW_CHECK_UUID_1 = "6AdRzMSdFcjqexdTkAUAMj"
+NEW_CHECK_UUID_2 = "HnP7kRw2mXsYtLvBqUeZoN"
+
+
+def test_add_checklist_items_payload() -> None:
+    result = run_cli_mutating_http(
+        f'edit {TASK_UUID} --add-checklist "Step one" --add-checklist "Step two"',
+        store(task(TASK_UUID, "A")),
+        extra_patches=[
+            p(
+                "things_cloud.cli.cmd_edit.random_task_id",
+                side_effect=[NEW_CHECK_UUID_1, NEW_CHECK_UUID_2],
+            ),
+            p("things_cloud.client.time.time", return_value=NOW),
+        ],
+    )
+    assert_commit_payloads(
+        result,
+        {
+            NEW_CHECK_UUID_1: {
+                "t": 0,
+                "e": "ChecklistItem3",
+                "p": {
+                    "tt": "Step one",
+                    "ts": [TASK_UUID],
+                    "ss": 0,
+                    "ix": 1,
+                    "cd": NOW,
+                    "md": NOW,
+                },
+            },
+            NEW_CHECK_UUID_2: {
+                "t": 0,
+                "e": "ChecklistItem3",
+                "p": {
+                    "tt": "Step two",
+                    "ts": [TASK_UUID],
+                    "ss": 0,
+                    "ix": 2,
+                    "cd": NOW,
+                    "md": NOW,
+                },
+            },
+        },
+    )
+
+
+def test_remove_checklist_items_payload() -> None:
+    result = run_cli_mutating_http(
+        f"edit {TASK_UUID} --remove-checklist {CHECK_A[:6]},{CHECK_B[:6]}",
+        store(
+            task(TASK_UUID, "A"),
+            checklist(CHECK_A, TASK_UUID, "Step one", ix=1),
+            checklist(CHECK_B, TASK_UUID, "Step two", ix=2),
+        ),
+        extra_patches=[p("things_cloud.client.time.time", return_value=NOW)],
+    )
+    assert_commit_payloads(
+        result,
+        {
+            CHECK_A: {"t": 2, "e": "ChecklistItem3", "p": {}},
+            CHECK_B: {"t": 2, "e": "ChecklistItem3", "p": {}},
+        },
+    )
+
+
+def test_rename_checklist_items_payload() -> None:
+    result = run_cli_mutating_http(
+        f'edit {TASK_UUID} --rename-checklist {CHECK_A[:6]}:"New step one" --rename-checklist {CHECK_B[:6]}:"New step two"',
+        store(
+            task(TASK_UUID, "A"),
+            checklist(CHECK_A, TASK_UUID, "Step one", ix=1),
+            checklist(CHECK_B, TASK_UUID, "Step two", ix=2),
+        ),
+        extra_patches=[p("things_cloud.client.time.time", return_value=NOW)],
+    )
+    assert_commit_payloads(
+        result,
+        {
+            CHECK_A: {
+                "t": 1,
+                "e": "ChecklistItem3",
+                "p": {"tt": "New step one", "md": NOW},
+            },
+            CHECK_B: {
+                "t": 1,
+                "e": "ChecklistItem3",
+                "p": {"tt": "New step two", "md": NOW},
+            },
+        },
+    )
+
+
+def test_checklist_flags_require_single_task_id() -> None:
+    result = run_cli_mutating_http(
+        f'edit {TASK_UUID} {TASK_UUID2} --add-checklist "Step"',
+        store(task(TASK_UUID, "A"), task(TASK_UUID2, "B")),
+    )
+    assert_no_commits(result)
+    assert (
+        result.stderr
+        == "--add-checklist/--remove-checklist/--rename-checklist require a single task ID.\n"
     )
 
 

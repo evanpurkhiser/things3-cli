@@ -5,8 +5,9 @@ import sys
 import time
 
 from things_cloud.client import ThingsCloudClient
+from things_cloud.ids import random_task_id
 from things_cloud.store import ThingsStore
-from things_cloud.schema import TaskStart
+from things_cloud.schema import TaskStart, ENTITY_CHECKLIST_ITEM
 from things_cloud.cli.common import (
     GREEN,
     DIM,
@@ -16,6 +17,7 @@ from things_cloud.cli.common import (
     fmt_resolve_error,
     _task6_note,
     _resolve_tag_ids,
+    _resolve_checklist_items,
     tag_edit_parent,
 )
 
@@ -27,12 +29,21 @@ def cmd_edit(
     task_ids: list[str] = args.task_ids
     multiple = len(task_ids) > 1
 
-    # title and notes only make sense for a single task
+    # title, notes, and checklist edits only make sense for a single task
     if multiple and args.title is not None:
         print("--title requires a single task ID.", file=sys.stderr)
         return
     if multiple and args.notes is not None:
         print("--notes requires a single task ID.", file=sys.stderr)
+        return
+    add_checklist = getattr(args, "add_checklist", None) or []
+    remove_checklist_raw = getattr(args, "remove_checklist", None)
+    rename_checklist_raw = getattr(args, "rename_checklist", None) or []
+    if multiple and (add_checklist or remove_checklist_raw or rename_checklist_raw):
+        print(
+            "--add-checklist/--remove-checklist/--rename-checklist require a single task ID.",
+            file=sys.stderr,
+        )
         return
 
     # Resolve all tasks up front, aborting on any error
@@ -125,6 +136,26 @@ def cmd_edit(
         if lbl not in labels:
             labels.append(lbl)
 
+    # Parse --rename-checklist tokens (id:new title) before the loop
+    rename_checklist_map: dict[str, str] = {}
+    for token in rename_checklist_raw:
+        if ":" not in token:
+            print(
+                f"--rename-checklist requires 'id:new title' format, got: {token!r}",
+                file=sys.stderr,
+            )
+            return
+        short_id, _, new_title = token.partition(":")
+        short_id = short_id.strip()
+        new_title = new_title.strip()
+        if not short_id or not new_title:
+            print(
+                f"--rename-checklist requires 'id:new title' format, got: {token!r}",
+                file=sys.stderr,
+            )
+            return
+        rename_checklist_map[short_id] = new_title
+
     # Build per-task updates (title, notes, move=clear which depends on task.start)
     now_ts = time.time()
     changes: dict = {}
@@ -168,12 +199,75 @@ def cmd_edit(
             current = [uuid for uuid in current if uuid not in remove_tag_ids]
             update["tg"] = current
 
-        if not update:
+        # Checklist: remove items
+        if remove_checklist_raw:
+            items, err = _resolve_checklist_items(task, remove_checklist_raw)
+            if err:
+                print(err, file=sys.stderr)
+                return
+            remove_uuids = {item.uuid for item in items}
+            for uuid in remove_uuids:
+                changes[uuid] = {"t": 2, "e": ENTITY_CHECKLIST_ITEM, "p": {}}
+            if "remove-checklist" not in labels:
+                labels.append("remove-checklist")
+
+        # Checklist: rename items
+        if rename_checklist_map:
+            for short_id, new_title in rename_checklist_map.items():
+                matches = [
+                    i for i in task.checklist_items if i.uuid.startswith(short_id)
+                ]
+                if not matches:
+                    print(f"Checklist item not found: {short_id!r}", file=sys.stderr)
+                    return
+                if len(matches) > 1:
+                    print(
+                        f"Ambiguous checklist item prefix: {short_id!r}",
+                        file=sys.stderr,
+                    )
+                    return
+                changes[matches[0].uuid] = {
+                    "t": 1,
+                    "e": ENTITY_CHECKLIST_ITEM,
+                    "p": {"tt": new_title, "md": now_ts},
+                }
+            if "rename-checklist" not in labels:
+                labels.append("rename-checklist")
+
+        # Checklist: add new items
+        if add_checklist:
+            max_ix = max((i.index for i in task.checklist_items), default=0)
+            for idx, title in enumerate(add_checklist):
+                title = title.strip()
+                if not title:
+                    print("Checklist item title cannot be empty.", file=sys.stderr)
+                    return
+                new_uuid = random_task_id()
+                changes[new_uuid] = {
+                    "t": 0,
+                    "e": ENTITY_CHECKLIST_ITEM,
+                    "p": {
+                        "tt": title,
+                        "ts": [task.uuid],
+                        "ss": 0,
+                        "ix": max_ix + idx + 1,
+                        "cd": now_ts,
+                        "md": now_ts,
+                    },
+                }
+            if "add-checklist" not in labels:
+                labels.append("add-checklist")
+
+        has_checklist_changes = (
+            add_checklist or remove_checklist_raw or rename_checklist_map
+        )
+        if not update and not has_checklist_changes:
             print("No edit changes requested.", file=sys.stderr)
             return
 
-        update["md"] = now_ts
-        changes[task.uuid] = {"t": 1, "e": task.entity, "p": update}
+        if update:
+            update["md"] = now_ts
+            changes[task.uuid] = {"t": 1, "e": task.entity, "p": update}
 
     try:
         client.commit(changes)
@@ -183,7 +277,10 @@ def cmd_edit(
 
     label_str = colored(f"({', '.join(labels)})", DIM)
     for task in tasks:
-        title_display = changes[task.uuid]["p"].get("tt") or task.title
+        task_change = changes.get(task.uuid)
+        title_display = (
+            task_change["p"].get("tt") if task_change else None
+        ) or task.title
         print(
             colored(f"{ICONS.done} Edited", GREEN),
             f"{title_display}  {colored(task.uuid, DIM)}",
@@ -194,7 +291,7 @@ def cmd_edit(
 def register(subparsers) -> dict[str, CommandHandler]:
     edit_parser = subparsers.add_parser(
         "edit",
-        help="Edit a task title, container, notes, or tags",
+        help="Edit a task title, container, notes, tags, or checklist items",
         parents=[tag_edit_parent],
     )
     edit_parser.add_argument(
@@ -214,6 +311,26 @@ def register(subparsers) -> dict[str, CommandHandler]:
     edit_parser.add_argument(
         "--notes",
         help="Replace notes (single task only; use empty string to clear)",
+    )
+    edit_parser.add_argument(
+        "--add-checklist",
+        dest="add_checklist",
+        action="append",
+        metavar="TITLE",
+        help="Add a checklist item (repeatable, single task only)",
+    )
+    edit_parser.add_argument(
+        "--remove-checklist",
+        dest="remove_checklist",
+        metavar="IDS",
+        help="Remove checklist items by comma-separated short IDs (single task only)",
+    )
+    edit_parser.add_argument(
+        "--rename-checklist",
+        dest="rename_checklist",
+        action="append",
+        metavar="ID:TITLE",
+        help="Rename a checklist item: short-id:new title (repeatable, single task only)",
     )
 
     return {"edit": cmd_edit}
