@@ -99,7 +99,7 @@ def test_project_grouped_with_progress_counts(
         ),
         _task_create(
             "VPBKRqFVE5ovBe8U5gCNfX",
-            "QA",
+            "Quality Assurance",
             ix=100,
             tp=2,
             pr="Dxf7yNCKaPoWNBVM7zVi2p",

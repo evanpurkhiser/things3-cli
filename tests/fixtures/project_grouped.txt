@@ -3,6 +3,6 @@
   Lk ▢ Draft announcement
   7W ◼ Publish release notes
 
-  QA
+  Quality Assurance
     DT ▢ Run regression suite
     XU ▢ Capture screenshots
