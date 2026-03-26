@@ -1,0 +1,7 @@
+use crate::command::common::fixture_test;
+
+fixture_test!(test_area_all_includes_completed_tasks_and_projects_0);
+fixture_test!(test_area_all_includes_completed_tasks_and_projects_1);
+fixture_test!(test_area_detailed_shows_task_and_project_notes_with_checklist);
+fixture_test!(test_area_header_shows_tags);
+fixture_test!(test_area_lists_loose_tasks_and_projects);

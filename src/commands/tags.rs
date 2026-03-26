@@ -1,14 +1,13 @@
 use crate::app::Cli;
-use crate::auth::load_auth;
-use crate::client::ThingsCloudClient;
+use crate::cloud_writer::{CloudWriter, LiveCloudWriter};
 use crate::commands::Command;
-use crate::common::{BOLD, DIM, GREEN, ICONS, colored, resolve_single_tag};
+use crate::common::{colored, resolve_single_tag, BOLD, DIM, GREEN, ICONS};
 use crate::ids::random_task_id;
-use crate::wire::{EntityType, OperationType, WireObject};
+use crate::wire::{EntityType, OperationType, TagPatch, WireObject};
 use anyhow::Result;
 use chrono::Utc;
 use clap::{Args, Subcommand};
-use serde_json::{Value, json};
+use serde_json::json;
 use std::collections::{BTreeMap, HashMap};
 use std::io::Write;
 
@@ -52,6 +51,66 @@ pub struct TagsDeleteArgs {
 
 fn now_ts() -> f64 {
     Utc::now().timestamp_millis() as f64 / 1000.0
+}
+
+#[derive(Debug, Clone)]
+struct TagsEditPlan {
+    tag: crate::store::Tag,
+    update: TagPatch,
+    labels: Vec<String>,
+}
+
+fn build_tags_edit_plan(
+    args: &TagsEditArgs,
+    store: &crate::store::ThingsStore,
+    now: f64,
+) -> std::result::Result<TagsEditPlan, String> {
+    let (tag, err) = resolve_single_tag(store, &args.tag_id);
+    let Some(tag) = tag else {
+        return Err(err);
+    };
+
+    let mut update = TagPatch::default();
+    let mut labels = Vec::new();
+
+    if let Some(name) = &args.name {
+        let name = name.trim();
+        if name.is_empty() {
+            return Err("Tag name cannot be empty.".to_string());
+        }
+        update.title = Some(name.to_string());
+        labels.push("name".to_string());
+    }
+
+    if let Some(move_target) = &args.move_target {
+        let move_raw = move_target.trim();
+        if move_raw.eq_ignore_ascii_case("clear") {
+            update.parent_ids = Some(vec![]);
+            labels.push("move=clear".to_string());
+        } else {
+            let (parent, err) = resolve_single_tag(store, move_raw);
+            let Some(parent) = parent else {
+                return Err(err);
+            };
+            if parent.uuid == tag.uuid {
+                return Err("A tag cannot be its own parent.".to_string());
+            }
+            update.parent_ids = Some(vec![parent.uuid]);
+            labels.push(format!("move={move_raw}"));
+        }
+    }
+
+    if update.is_empty() {
+        return Err("No edit changes requested.".to_string());
+    }
+
+    update.modification_date = Some(now);
+
+    Ok(TagsEditPlan {
+        tag,
+        update,
+        labels,
+    })
 }
 
 impl Command for TagsArgs {
@@ -172,9 +231,7 @@ impl Command for TagsArgs {
                 }
 
                 let uuid = random_task_id();
-                let (email, password) = load_auth()?;
-                let mut client = ThingsCloudClient::new(email, password)?;
-                let _ = client.authenticate();
+                let mut writer = LiveCloudWriter::new()?;
                 let mut changes = BTreeMap::new();
                 changes.insert(
                     uuid.clone(),
@@ -184,7 +241,7 @@ impl Command for TagsArgs {
                         properties: props,
                     },
                 );
-                if let Err(e) = client.commit(changes, None) {
+                if let Err(e) = writer.commit(changes, None) {
                     eprintln!("Failed to create tag: {e}");
                     return Ok(());
                 }
@@ -199,80 +256,41 @@ impl Command for TagsArgs {
             }
             TagsSubcommand::Edit(args) => {
                 let store = cli.load_store()?;
-                let (tag, err) = resolve_single_tag(&store, &args.tag_id);
-                let Some(tag) = tag else {
-                    eprintln!("{err}");
-                    return Ok(());
-                };
-
-                let mut update: BTreeMap<String, Value> = BTreeMap::new();
-                let mut labels = Vec::new();
-
-                if let Some(name) = &args.name {
-                    let name = name.trim();
-                    if name.is_empty() {
-                        eprintln!("Tag name cannot be empty.");
+                let plan = match build_tags_edit_plan(args, &store, now_ts()) {
+                    Ok(plan) => plan,
+                    Err(err) => {
+                        eprintln!("{err}");
                         return Ok(());
                     }
-                    update.insert("tt".to_string(), json!(name));
-                    labels.push("name".to_string());
-                }
+                };
 
-                if let Some(move_target) = &args.move_target {
-                    let move_raw = move_target.trim();
-                    if move_raw.eq_ignore_ascii_case("clear") {
-                        update.insert("pn".to_string(), json!([]));
-                        labels.push("move=clear".to_string());
-                    } else {
-                        let (parent, err) = resolve_single_tag(&store, move_raw);
-                        let Some(parent) = parent else {
-                            eprintln!("{err}");
-                            return Ok(());
-                        };
-                        if parent.uuid == tag.uuid {
-                            eprintln!("A tag cannot be its own parent.");
-                            return Ok(());
-                        }
-                        update.insert("pn".to_string(), json!([parent.uuid]));
-                        labels.push(format!("move={move_raw}"));
-                    }
-                }
-
-                if update.is_empty() {
-                    eprintln!("No edit changes requested.");
-                    return Ok(());
-                }
-
-                update.insert("md".to_string(), json!(now_ts()));
-
-                let (email, password) = load_auth()?;
-                let mut client = ThingsCloudClient::new(email, password)?;
-                let _ = client.authenticate();
+                let mut writer = LiveCloudWriter::new()?;
                 let mut changes = BTreeMap::new();
                 changes.insert(
-                    tag.uuid.clone(),
+                    plan.tag.uuid.clone(),
                     WireObject {
                         operation_type: OperationType::Update,
                         entity_type: Some(EntityType::Tag4),
-                        properties: update.clone(),
+                        properties: plan.update.clone().into_properties(),
                     },
                 );
-                if let Err(e) = client.commit(changes, None) {
+                if let Err(e) = writer.commit(changes, None) {
                     eprintln!("Failed to edit tag: {e}");
                     return Ok(());
                 }
 
-                let name = update
-                    .get("tt")
-                    .and_then(Value::as_str)
-                    .unwrap_or(&tag.title);
+                let name = plan.update.title.as_deref().unwrap_or(&plan.tag.title);
                 writeln!(
                     out,
                     "{} {}  {} {}",
                     colored(&format!("{} Edited", ICONS.done), &[GREEN], cli.no_color),
                     name,
-                    colored(&tag.uuid, &[DIM], cli.no_color),
-                    colored(&format!("({})", labels.join(", ")), &[DIM], cli.no_color)
+                    colored(&plan.tag.uuid, &[DIM], cli.no_color),
+                    colored(
+                        &format!("({})", plan.labels.join(", ")),
+                        &[DIM],
+                        cli.no_color
+                    )
                 )?;
             }
             TagsSubcommand::Delete(args) => {
@@ -283,9 +301,7 @@ impl Command for TagsArgs {
                     return Ok(());
                 };
 
-                let (email, password) = load_auth()?;
-                let mut client = ThingsCloudClient::new(email, password)?;
-                let _ = client.authenticate();
+                let mut writer = LiveCloudWriter::new()?;
                 let mut changes = BTreeMap::new();
                 changes.insert(
                     tag.uuid.clone(),
@@ -295,7 +311,7 @@ impl Command for TagsArgs {
                         properties: BTreeMap::new(),
                     },
                 );
-                if let Err(e) = client.commit(changes, None) {
+                if let Err(e) = writer.commit(changes, None) {
                     eprintln!("Failed to delete tag: {e}");
                     return Ok(());
                 }
@@ -314,5 +330,115 @@ impl Command for TagsArgs {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::store::{fold_items, ThingsStore};
+    use crate::wire::{EntityType, OperationType, WireItem, WireObject};
+
+    const NOW: f64 = 1_700_000_222.0;
+    const TAG_UUID: &str = "WukwpDdL5Z88nX3okGMKTC";
+    const CHILD_UUID: &str = "JiqwiDaS3CAyjCmHihBDnB";
+
+    fn build_store(entries: Vec<(String, WireObject)>) -> ThingsStore {
+        let mut item: WireItem = BTreeMap::new();
+        for (uuid, obj) in entries {
+            item.insert(uuid, obj);
+        }
+        ThingsStore::from_raw_state(&fold_items([item]))
+    }
+
+    fn tag(uuid: &str, title: &str, parent: Option<&str>) -> (String, WireObject) {
+        let mut props = BTreeMap::from([
+            ("tt".to_string(), json!(title)),
+            ("ix".to_string(), json!(0)),
+        ]);
+        if let Some(parent) = parent {
+            props.insert("pn".to_string(), json!([parent]));
+        }
+        (
+            uuid.to_string(),
+            WireObject {
+                operation_type: OperationType::Create,
+                entity_type: Some(EntityType::Tag4),
+                properties: props,
+            },
+        )
+    }
+
+    #[test]
+    fn tags_edit_payloads_and_errors() {
+        let store = build_store(vec![
+            tag(TAG_UUID, "Work", None),
+            tag(CHILD_UUID, "Meetings", Some(TAG_UUID)),
+        ]);
+
+        let rename = build_tags_edit_plan(
+            &TagsEditArgs {
+                tag_id: TAG_UUID.to_string(),
+                name: Some("Work Stuff".to_string()),
+                move_target: None,
+            },
+            &store,
+            NOW,
+        )
+        .expect("rename");
+        let p = rename.update.into_properties();
+        assert_eq!(p.get("tt"), Some(&json!("Work Stuff")));
+        assert_eq!(p.get("md"), Some(&json!(NOW)));
+
+        let reparent = build_tags_edit_plan(
+            &TagsEditArgs {
+                tag_id: CHILD_UUID.to_string(),
+                name: None,
+                move_target: Some(TAG_UUID.to_string()),
+            },
+            &store,
+            NOW,
+        )
+        .expect("reparent");
+        assert_eq!(
+            reparent.update.into_properties().get("pn"),
+            Some(&json!([TAG_UUID]))
+        );
+
+        let clear = build_tags_edit_plan(
+            &TagsEditArgs {
+                tag_id: CHILD_UUID.to_string(),
+                name: None,
+                move_target: Some("clear".to_string()),
+            },
+            &store,
+            NOW,
+        )
+        .expect("clear");
+        assert_eq!(clear.update.into_properties().get("pn"), Some(&json!([])));
+
+        let no_change = build_tags_edit_plan(
+            &TagsEditArgs {
+                tag_id: TAG_UUID.to_string(),
+                name: None,
+                move_target: None,
+            },
+            &store,
+            NOW,
+        )
+        .expect_err("no changes");
+        assert_eq!(no_change, "No edit changes requested.");
+
+        let self_parent = build_tags_edit_plan(
+            &TagsEditArgs {
+                tag_id: TAG_UUID.to_string(),
+                name: None,
+                move_target: Some(TAG_UUID.to_string()),
+            },
+            &store,
+            NOW,
+        )
+        .expect_err("self parent");
+        assert_eq!(self_parent, "A tag cannot be its own parent.");
     }
 }

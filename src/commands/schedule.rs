@@ -1,13 +1,12 @@
 use crate::app::Cli;
-use crate::auth::load_auth;
-use crate::client::ThingsCloudClient;
+use crate::cloud_writer::{CloudWriter, LiveCloudWriter};
 use crate::commands::Command;
-use crate::common::{DIM, GREEN, ICONS, colored, day_to_timestamp, parse_day};
+use crate::common::{colored, day_to_timestamp, parse_day, DIM, GREEN, ICONS};
 use crate::wire::{EntityType, OperationType, WireObject};
 use anyhow::Result;
 use chrono::Utc;
 use clap::Args;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::collections::BTreeMap;
 
 #[derive(Debug, Args)]
@@ -112,9 +111,7 @@ impl Command for ScheduleArgs {
             return Ok(());
         }
 
-        let (email, password) = load_auth()?;
-        let mut client = ThingsCloudClient::new(email, password)?;
-        let _ = client.authenticate();
+        let mut writer = LiveCloudWriter::new()?;
 
         let now = Utc::now().timestamp_millis() as f64 / 1000.0;
         update.insert("md".to_string(), json!(now));
@@ -129,7 +126,7 @@ impl Command for ScheduleArgs {
             },
         );
 
-        if let Err(e) = client.commit(changes, None) {
+        if let Err(e) = writer.commit(changes, None) {
             eprintln!("Failed to schedule item: {e}");
             return Ok(());
         }

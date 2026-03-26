@@ -1,8 +1,7 @@
 use crate::app::Cli;
-use crate::auth::load_auth;
-use crate::client::ThingsCloudClient;
+use crate::cloud_writer::{CloudWriter, LiveCloudWriter};
 use crate::commands::Command;
-use crate::common::{DIM, GREEN, ICONS, colored};
+use crate::common::{colored, DIM, GREEN, ICONS};
 use crate::wire::{EntityType, OperationType, TaskStatus, WireObject};
 use anyhow::Result;
 use chrono::Utc;
@@ -173,9 +172,7 @@ impl Command for MarkArgs {
             .or(self.uncheck_ids.as_ref())
             .or(self.check_cancel_ids.as_ref());
 
-        let (email, password) = load_auth()?;
-        let mut client = ThingsCloudClient::new(email, password)?;
-        let _ = client.authenticate();
+        let mut writer = LiveCloudWriter::new()?;
 
         if let Some(checklist_raw) = checklist_raw {
             if self.task_ids.len() != 1 {
@@ -233,7 +230,7 @@ impl Command for MarkArgs {
                 );
             }
 
-            if let Err(e) = client.commit(changes, None) {
+            if let Err(e) = writer.commit(changes, None) {
                 eprintln!("Failed to mark checklist items: {e}");
                 return Ok(());
             }
@@ -330,7 +327,7 @@ impl Command for MarkArgs {
             );
         }
 
-        if let Err(e) = client.commit(changes, None) {
+        if let Err(e) = writer.commit(changes, None) {
             eprintln!("Failed to mark items {}: {}", action, e);
             return Ok(());
         }

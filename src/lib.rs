@@ -1,5 +1,6 @@
 pub mod app;
 pub mod auth;
+pub mod cloud_writer;
 pub mod client;
 pub mod commands;
 pub mod common;

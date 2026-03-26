@@ -1,0 +1,7 @@
+use crate::command::common::fixture_test;
+
+fixture_test!(test_logbook_date_filter_options__logbook___from_2025_03_15);
+fixture_test!(test_logbook_date_filter_options__logbook___to_2025_03_14);
+fixture_test!(test_logbook_detailed_mode_renders_notes_and_checklist);
+fixture_test!(test_logbook_empty);
+fixture_test!(test_logbook_groups_by_completion_day_with_completed_and_canceled_items);

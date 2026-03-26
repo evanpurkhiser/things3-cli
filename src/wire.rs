@@ -157,6 +157,55 @@ pub struct TaskProps {
     pub modification_date: Option<f64>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct TaskPatch {
+    #[serde(rename = "tt", skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(rename = "nt", skip_serializing_if = "Option::is_none")]
+    pub notes: Option<Value>,
+    #[serde(rename = "st", skip_serializing_if = "Option::is_none")]
+    pub start_location: Option<TaskStart>,
+    #[serde(rename = "sr", skip_serializing_if = "Option::is_none")]
+    pub scheduled_date: Option<Value>,
+    #[serde(rename = "tir", skip_serializing_if = "Option::is_none")]
+    pub today_index_reference: Option<Value>,
+    #[serde(rename = "pr", skip_serializing_if = "Option::is_none")]
+    pub parent_project_ids: Option<Vec<String>>,
+    #[serde(rename = "ar", skip_serializing_if = "Option::is_none")]
+    pub area_ids: Option<Vec<String>>,
+    #[serde(rename = "agr", skip_serializing_if = "Option::is_none")]
+    pub action_group_ids: Option<Vec<String>>,
+    #[serde(rename = "tg", skip_serializing_if = "Option::is_none")]
+    pub tag_ids: Option<Vec<String>>,
+    #[serde(rename = "sb", skip_serializing_if = "Option::is_none")]
+    pub evening_bit: Option<i32>,
+    #[serde(rename = "md", skip_serializing_if = "Option::is_none")]
+    pub modification_date: Option<f64>,
+}
+
+impl TaskPatch {
+    pub fn is_empty(&self) -> bool {
+        self.title.is_none()
+            && self.notes.is_none()
+            && self.start_location.is_none()
+            && self.scheduled_date.is_none()
+            && self.today_index_reference.is_none()
+            && self.parent_project_ids.is_none()
+            && self.area_ids.is_none()
+            && self.action_group_ids.is_none()
+            && self.tag_ids.is_none()
+            && self.evening_bit.is_none()
+            && self.modification_date.is_none()
+    }
+
+    pub fn into_properties(self) -> BTreeMap<String, Value> {
+        match serde_json::to_value(self) {
+            Ok(Value::Object(map)) => map.into_iter().collect(),
+            _ => BTreeMap::new(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(from = "i32", into = "i32")]
 pub enum TaskType {
@@ -361,6 +410,40 @@ pub struct ChecklistItemProps {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct ChecklistItemPatch {
+    #[serde(rename = "tt", skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(rename = "ss", skip_serializing_if = "Option::is_none")]
+    pub status: Option<TaskStatus>,
+    #[serde(rename = "ts", skip_serializing_if = "Option::is_none")]
+    pub task_ids: Option<Vec<String>>,
+    #[serde(rename = "ix", skip_serializing_if = "Option::is_none")]
+    pub sort_index: Option<i32>,
+    #[serde(rename = "cd", skip_serializing_if = "Option::is_none")]
+    pub creation_date: Option<f64>,
+    #[serde(rename = "md", skip_serializing_if = "Option::is_none")]
+    pub modification_date: Option<f64>,
+}
+
+impl ChecklistItemPatch {
+    pub fn is_empty(&self) -> bool {
+        self.title.is_none()
+            && self.status.is_none()
+            && self.task_ids.is_none()
+            && self.sort_index.is_none()
+            && self.creation_date.is_none()
+            && self.modification_date.is_none()
+    }
+
+    pub fn into_properties(self) -> BTreeMap<String, Value> {
+        match serde_json::to_value(self) {
+            Ok(Value::Object(map)) => map.into_iter().collect(),
+            _ => BTreeMap::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct TagProps {
     #[serde(rename = "tt", default)]
     pub title: String,
@@ -375,6 +458,29 @@ pub struct TagProps {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct TagPatch {
+    #[serde(rename = "tt", skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(rename = "pn", skip_serializing_if = "Option::is_none")]
+    pub parent_ids: Option<Vec<String>>,
+    #[serde(rename = "md", skip_serializing_if = "Option::is_none")]
+    pub modification_date: Option<f64>,
+}
+
+impl TagPatch {
+    pub fn is_empty(&self) -> bool {
+        self.title.is_none() && self.parent_ids.is_none() && self.modification_date.is_none()
+    }
+
+    pub fn into_properties(self) -> BTreeMap<String, Value> {
+        match serde_json::to_value(self) {
+            Ok(Value::Object(map)) => map.into_iter().collect(),
+            _ => BTreeMap::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct AreaProps {
     #[serde(rename = "tt", default)]
     pub title: String,
@@ -384,6 +490,29 @@ pub struct AreaProps {
     pub sort_index: i32,
     #[serde(rename = "xx", default)]
     pub conflict_overrides: Option<Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct AreaPatch {
+    #[serde(rename = "tt", skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(rename = "tg", skip_serializing_if = "Option::is_none")]
+    pub tag_ids: Option<Vec<String>>,
+    #[serde(rename = "md", skip_serializing_if = "Option::is_none")]
+    pub modification_date: Option<f64>,
+}
+
+impl AreaPatch {
+    pub fn is_empty(&self) -> bool {
+        self.title.is_none() && self.tag_ids.is_none() && self.modification_date.is_none()
+    }
+
+    pub fn into_properties(self) -> BTreeMap<String, Value> {
+        match serde_json::to_value(self) {
+            Ok(Value::Object(map)) => map.into_iter().collect(),
+            _ => BTreeMap::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]

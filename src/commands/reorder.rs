@@ -1,8 +1,7 @@
 use crate::app::Cli;
-use crate::auth::load_auth;
-use crate::client::ThingsCloudClient;
+use crate::cloud_writer::{CloudWriter, LiveCloudWriter};
 use crate::commands::Command;
-use crate::common::{DIM, GREEN, ICONS, colored};
+use crate::common::{colored, DIM, GREEN, ICONS};
 use crate::wire::{EntityType, OperationType, TaskStart, TaskStatus, WireObject};
 use anyhow::Result;
 use chrono::Utc;
@@ -61,9 +60,7 @@ impl Command for ReorderArgs {
         let is_today_reorder = is_today_orderable(&item) && is_today_orderable(&anchor);
         let reorder_label: String;
 
-        let (email, password) = load_auth()?;
-        let mut client = ThingsCloudClient::new(email, password)?;
-        let _ = client.authenticate();
+        let mut writer = LiveCloudWriter::new()?;
 
         if is_today_reorder {
             let anchor_tir = anchor
@@ -94,7 +91,7 @@ impl Command for ReorderArgs {
                 },
             );
 
-            if let Err(e) = client.commit(changes, None) {
+            if let Err(e) = writer.commit(changes, None) {
                 eprintln!("Failed to reorder item: {e}");
                 return Ok(());
             }
@@ -237,11 +234,11 @@ impl Command for ReorderArgs {
                         properties: props,
                     },
                 );
-                if let Err(e) = client.commit(changes, ancestor_index) {
+                if let Err(e) = writer.commit(changes, ancestor_index) {
                     eprintln!("Failed to reorder item: {e}");
                     return Ok(());
                 }
-                ancestor_index = Some(client.head_index);
+                ancestor_index = Some(writer.head_index());
             }
 
             reorder_label = if self.before_id.is_some() {

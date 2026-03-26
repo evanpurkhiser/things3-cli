@@ -1,8 +1,7 @@
 use crate::app::Cli;
-use crate::auth::load_auth;
-use crate::client::ThingsCloudClient;
+use crate::cloud_writer::{CloudWriter, LiveCloudWriter};
 use crate::commands::Command;
-use crate::common::{DIM, GREEN, ICONS, colored};
+use crate::common::{colored, DIM, GREEN, ICONS};
 use crate::wire::{EntityType, OperationType, WireObject};
 use anyhow::Result;
 use clap::Args;
@@ -74,9 +73,7 @@ impl Command for DeleteArgs {
             return Ok(());
         }
 
-        let (email, password) = load_auth()?;
-        let mut client = ThingsCloudClient::new(email, password)?;
-        let _ = client.authenticate();
+        let mut writer = LiveCloudWriter::new()?;
 
         let mut changes = BTreeMap::new();
         for (uuid, entity, _title) in &targets {
@@ -90,7 +87,7 @@ impl Command for DeleteArgs {
             );
         }
 
-        if let Err(e) = client.commit(changes, None) {
+        if let Err(e) = writer.commit(changes, None) {
             eprintln!("Failed to delete items: {e}");
             return Ok(());
         }

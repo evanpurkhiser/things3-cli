@@ -1,5 +1,5 @@
 use crate::app::Cli;
-use crate::client::ThingsCloudClient;
+use crate::cloud_writer::{CloudWriter, LiveCloudWriter};
 use crate::commands::Command;
 use crate::common::{
     DIM, GREEN, ICONS, colored, day_to_timestamp, parse_day, resolve_tag_ids, task6_note,
@@ -394,9 +394,7 @@ impl Command for NewArgs {
         }
 
         let new_uuid = random_task_id();
-        let (email, password) = crate::auth::load_auth()?;
-        let mut client = ThingsCloudClient::new(email, password)?;
-        let _ = client.authenticate();
+        let mut writer = LiveCloudWriter::new()?;
 
         let mut changes = BTreeMap::new();
         changes.insert(
@@ -422,7 +420,7 @@ impl Command for NewArgs {
             );
         }
 
-        if let Err(e) = client.commit(changes, None) {
+        if let Err(e) = writer.commit(changes, None) {
             eprintln!("Failed to create task: {e}");
             return Ok(());
         }
