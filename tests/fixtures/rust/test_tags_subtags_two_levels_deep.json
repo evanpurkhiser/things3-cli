@@ -1,0 +1,80 @@
+{
+  "test_name": "test_tags_subtags_two_levels_deep",
+  "cli_args": "tags",
+  "today_ts": null,
+  "journal": [
+    {
+      "AAAAAAAAAAAAAAAAAAA1": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Places",
+          "ix": 10
+        }
+      }
+    },
+    {
+      "BBBBBBBBBBBBBBBBBBB2": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Restaurants",
+          "ix": 20,
+          "pn": [
+            "AAAAAAAAAAAAAAAAAAA1"
+          ]
+        }
+      }
+    },
+    {
+      "CCCCCCCCCCCCCCCCCCC3": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Fine Dining",
+          "ix": 30,
+          "pn": [
+            "BBBBBBBBBBBBBBBBBBB2"
+          ]
+        }
+      }
+    },
+    {
+      "DDDDDDDDDDDDDDDDDDD4": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Casual",
+          "ix": 40,
+          "pn": [
+            "BBBBBBBBBBBBBBBBBBB2"
+          ]
+        }
+      }
+    },
+    {
+      "EEEEEEEEEEEEEEEEEEE5": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Cafes",
+          "ix": 50,
+          "pn": [
+            "AAAAAAAAAAAAAAAAAAA1"
+          ]
+        }
+      }
+    },
+    {
+      "FFFFFFFFFFFFFFFFFFF6": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Errands",
+          "ix": 60
+        }
+      }
+    }
+  ],
+  "expected_output": "⌗ Tags  (6)\n\n  ⌗ Places\n  ├╴⌗ Restaurants\n  │ ├╴⌗ Fine Dining\n  │ └╴⌗ Casual\n  └╴⌗ Cafes\n  ⌗ Errands\n"
+}

@@ -1,0 +1,38 @@
+{
+  "test_name": "test_find_inbox_flag",
+  "cli_args": "find --inbox",
+  "today_ts": null,
+  "journal": [
+    {
+      "AAA111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Inbox task",
+          "st": 0,
+          "ss": 0,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600
+        }
+      }
+    },
+    {
+      "BBB111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Anytime task",
+          "st": 1,
+          "ss": 0,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600
+        }
+      }
+    }
+  ],
+  "expected_output": "⌗ Find  (1 task)\n\n  A ▢ Inbox task\n"
+}

@@ -1,0 +1,56 @@
+{
+  "test_name": "test_find_completed_on_range",
+  "cli_args": "find --completed-on '>=2026-03-01' --completed-on '<=2026-03-31'",
+  "today_ts": null,
+  "journal": [
+    {
+      "AAA111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Early done",
+          "st": 1,
+          "ss": 3,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600,
+          "sp": 1769904000
+        }
+      }
+    },
+    {
+      "BBB111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Mid done",
+          "st": 1,
+          "ss": 3,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600,
+          "sp": 1773532800
+        }
+      }
+    },
+    {
+      "CCC111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Late done",
+          "st": 1,
+          "ss": 3,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600,
+          "sp": 1775001600
+        }
+      }
+    }
+  ],
+  "expected_output": "⌗ Find  (1 task)\n\n  B ◼ Mid done\n"
+}

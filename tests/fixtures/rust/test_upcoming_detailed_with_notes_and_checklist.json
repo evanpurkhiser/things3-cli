@@ -1,0 +1,92 @@
+{
+  "test_name": "test_upcoming_detailed_with_notes_and_checklist",
+  "cli_args": "upcoming --detailed",
+  "today_ts": 1774396800,
+  "journal": [
+    {
+      "6dVPrZf6uNWQHuMC1hBiqD": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Finalize launch plan",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 10,
+          "cd": 1,
+          "md": 1,
+          "sr": 4074364800,
+          "nt": {
+            "_t": "tx",
+            "t": 1,
+            "v": "Draft timeline\nConfirm stakeholders"
+          }
+        }
+      }
+    },
+    {
+      "35juo14353ZfzTQYGktM4V": {
+        "t": 0,
+        "e": "ChecklistItem3",
+        "p": {
+          "tt": "Write announcement",
+          "ts": [
+            "6dVPrZf6uNWQHuMC1hBiqD"
+          ],
+          "ss": 0,
+          "ix": 1,
+          "cd": 1,
+          "md": 1
+        }
+      }
+    },
+    {
+      "H7s8p6ctuRWL2qLxZEqSod": {
+        "t": 0,
+        "e": "ChecklistItem3",
+        "p": {
+          "tt": "Get legal sign-off",
+          "ts": [
+            "6dVPrZf6uNWQHuMC1hBiqD"
+          ],
+          "ss": 3,
+          "ix": 2,
+          "cd": 1,
+          "md": 1
+        }
+      }
+    },
+    {
+      "2Lyo713TeXmyG7PXve3KS6": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Should not show (someday unscheduled)",
+          "tp": 0,
+          "ss": 0,
+          "st": 2,
+          "ix": 20,
+          "cd": 1,
+          "md": 1
+        }
+      }
+    },
+    {
+      "K6qWQRHTKymf8cdRFxMBwz": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Should not show (past scheduled)",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 30,
+          "cd": 1,
+          "md": 1,
+          "sr": 978307200
+        }
+      }
+    }
+  ],
+  "expected_output": "▷ Upcoming  (1 tasks)\n\n  2099-02-10\n    6 ▢ Finalize launch plan\n      │ Draft timeline\n      │ Confirm stakeholders\n      │\n    3 ├╴○ Write announcement\n    H └╴● Get legal sign-off\n"
+}

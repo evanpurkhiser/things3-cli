@@ -1,0 +1,69 @@
+{
+  "test_name": "test_find_query_plus_tag",
+  "cli_args": "find write --tag Work",
+  "today_ts": null,
+  "journal": [
+    {
+      "TTAG1111111111111111111T": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Work",
+          "ix": 10
+        }
+      }
+    },
+    {
+      "AAA111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Write report",
+          "st": 1,
+          "ss": 0,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600,
+          "tg": [
+            "TTAG1111111111111111111T"
+          ]
+        }
+      }
+    },
+    {
+      "BBB111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Write poem",
+          "st": 1,
+          "ss": 0,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600
+        }
+      }
+    },
+    {
+      "CCC111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Review PR",
+          "st": 1,
+          "ss": 0,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600,
+          "tg": [
+            "TTAG1111111111111111111T"
+          ]
+        }
+      }
+    }
+  ],
+  "expected_output": "⌗ Find  (1 task)\n\n  A ▢ Write report  [Work]\n"
+}

@@ -1,0 +1,22 @@
+[package]
+name = "things-cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+chrono = { version = "0.4", features = ["clock"] }
+crc32fast = "1.4"
+dirs = "6.0"
+rand = "0.9"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha1 = "0.10"
+urlencoding = "2.1"
+uuid = { version = "1.11", features = ["v4"] }
+
+[dev-dependencies]
+insta = "1.42"
+tempfile = "3"

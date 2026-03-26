@@ -1,0 +1,91 @@
+{
+  "test_name": "test_area_all_includes_completed_tasks_and_projects_1",
+  "cli_args": "area GFeArP5ytBQoLaKQj7Aocu --all",
+  "today_ts": null,
+  "journal": [
+    {
+      "GFeArP5ytBQoLaKQj7Aocu": {
+        "t": 0,
+        "e": "Area3",
+        "p": {
+          "tt": "Work",
+          "ix": 10,
+          "tg": []
+        }
+      }
+    },
+    {
+      "KTGUDwV1pzri9576i5QmgH": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Draft roadmap",
+          "tp": 0,
+          "st": 1,
+          "ss": 0,
+          "ix": 10,
+          "cd": 1,
+          "md": 1,
+          "ar": [
+            "GFeArP5ytBQoLaKQj7Aocu"
+          ]
+        }
+      }
+    },
+    {
+      "SzhTmfsEKGiPjoFYNp8wi1": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Archive old docs",
+          "tp": 0,
+          "st": 1,
+          "ss": 3,
+          "ix": 20,
+          "cd": 1,
+          "md": 1,
+          "ar": [
+            "GFeArP5ytBQoLaKQj7Aocu"
+          ]
+        }
+      }
+    },
+    {
+      "5LiCYtdPCdYgUqeA8cDEDa": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Q2 planning",
+          "tp": 1,
+          "st": 1,
+          "ss": 0,
+          "ix": 30,
+          "cd": 1,
+          "md": 1,
+          "ar": [
+            "GFeArP5ytBQoLaKQj7Aocu"
+          ]
+        }
+      }
+    },
+    {
+      "TQ436iUC7NTuAoDBJiXTYd": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Legacy migration",
+          "tp": 1,
+          "st": 1,
+          "ss": 3,
+          "ix": 40,
+          "cd": 1,
+          "md": 1,
+          "ar": [
+            "GFeArP5ytBQoLaKQj7Aocu"
+          ]
+        }
+      }
+    }
+  ],
+  "expected_output": "◆ Work  (2 projects, 2 tasks)\n\n  K ▢ Draft roadmap\n  S ◼ Archive old docs\n\n  5 ◯ Q2 planning\n  T ◯ Legacy migration\n"
+}

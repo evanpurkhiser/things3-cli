@@ -1,0 +1,7 @@
+{
+  "test_name": "test_no_args_defaults_to_today",
+  "cli_args": "",
+  "today_ts": 1774396800,
+  "journal": [],
+  "expected_output": "No tasks for today.\n"
+}

@@ -1,0 +1,79 @@
+{
+  "test_name": "test_projects_basic_grouped_by_area",
+  "cli_args": "projects",
+  "today_ts": null,
+  "journal": [
+    {
+      "Lrfk3xS36P7vBxJyuKBAfk": {
+        "t": 0,
+        "e": "Area3",
+        "p": {
+          "tt": "Home",
+          "ix": 10
+        }
+      }
+    },
+    {
+      "AhSY1yLqv7zt7uYCeSXZka": {
+        "t": 0,
+        "e": "Area3",
+        "p": {
+          "tt": "Work",
+          "ix": 20
+        }
+      }
+    },
+    {
+      "PunE7qFpjY3FcMP8SytB68": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Unsorted Project",
+          "tp": 1,
+          "st": 1,
+          "ss": 0,
+          "ix": 5,
+          "cd": 1,
+          "md": 1
+        }
+      }
+    },
+    {
+      "GG5a8qj6uFq5WtqbxywYng": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Kitchen Refresh",
+          "tp": 1,
+          "st": 1,
+          "ss": 0,
+          "ix": 10,
+          "cd": 1,
+          "md": 1,
+          "ar": [
+            "Lrfk3xS36P7vBxJyuKBAfk"
+          ]
+        }
+      }
+    },
+    {
+      "Nx1QfHaTQ9e5C7MzKt84rd": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Q2 Planning",
+          "tp": 1,
+          "st": 1,
+          "ss": 0,
+          "ix": 20,
+          "cd": 1,
+          "md": 1,
+          "ar": [
+            "AhSY1yLqv7zt7uYCeSXZka"
+          ]
+        }
+      }
+    }
+  ],
+  "expected_output": "● Projects  (3)\n\n  P ◯ Unsorted Project\n\n  L Home\n    G ◯ Kitchen Refresh\n\n  A Work\n    N ◯ Q2 Planning\n"
+}

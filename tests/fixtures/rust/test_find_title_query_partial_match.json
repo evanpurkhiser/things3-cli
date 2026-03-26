@@ -1,0 +1,53 @@
+{
+  "test_name": "test_find_title_query_partial_match",
+  "cli_args": "find release",
+  "today_ts": null,
+  "journal": [
+    {
+      "AAA111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Ship release v1.0",
+          "st": 1,
+          "ss": 0,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600
+        }
+      }
+    },
+    {
+      "BBB111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Release notes",
+          "st": 1,
+          "ss": 0,
+          "tp": 0,
+          "ix": 20,
+          "cd": 1735689600,
+          "md": 1735689600
+        }
+      }
+    },
+    {
+      "CCC111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Read book",
+          "st": 1,
+          "ss": 0,
+          "tp": 0,
+          "ix": 30,
+          "cd": 1735689600,
+          "md": 1735689600
+        }
+      }
+    }
+  ],
+  "expected_output": "⌗ Find  (2 tasks)\n\n  A ▢ Ship release v1.0\n  B ▢ Release notes\n"
+}

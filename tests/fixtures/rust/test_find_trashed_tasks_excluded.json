@@ -1,0 +1,24 @@
+{
+  "test_name": "test_find_trashed_tasks_excluded",
+  "cli_args": "find",
+  "today_ts": null,
+  "journal": [
+    {
+      "AAA111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Trashed task",
+          "st": 1,
+          "ss": 0,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600,
+          "tr": true
+        }
+      }
+    }
+  ],
+  "expected_output": "No matching tasks.\n"
+}

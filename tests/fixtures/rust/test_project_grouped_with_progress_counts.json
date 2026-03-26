@@ -1,0 +1,113 @@
+{
+  "test_name": "test_project_grouped_with_progress_counts",
+  "cli_args": "project Dx",
+  "today_ts": null,
+  "journal": [
+    {
+      "Dxf7yNCKaPoWNBVM7zVi2p": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Release Plan",
+          "tp": 1,
+          "ss": 0,
+          "st": 1,
+          "ix": 10,
+          "cd": 1710000000,
+          "md": 1710000000
+        }
+      }
+    },
+    {
+      "Lkf6UBiZ8vUzc8qQBSVgmo": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Draft announcement",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 10,
+          "cd": 1710000000,
+          "md": 1710000000,
+          "pr": [
+            "Dxf7yNCKaPoWNBVM7zVi2p"
+          ]
+        }
+      }
+    },
+    {
+      "7WqeVvEgnQxNLkTxrVBDCn": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Publish release notes",
+          "tp": 0,
+          "ss": 3,
+          "st": 1,
+          "ix": 20,
+          "cd": 1710000000,
+          "md": 1710000000,
+          "pr": [
+            "Dxf7yNCKaPoWNBVM7zVi2p"
+          ]
+        }
+      }
+    },
+    {
+      "VPBKRqFVE5ovBe8U5gCNfX": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Quality Assurance",
+          "tp": 2,
+          "ss": 0,
+          "st": 1,
+          "ix": 100,
+          "cd": 1710000000,
+          "md": 1710000000,
+          "pr": [
+            "Dxf7yNCKaPoWNBVM7zVi2p"
+          ]
+        }
+      }
+    },
+    {
+      "DTBiViWPQEgV8biabTY3kH": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Run regression suite",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 110,
+          "cd": 1710000000,
+          "md": 1710000000,
+          "agr": [
+            "VPBKRqFVE5ovBe8U5gCNfX"
+          ]
+        }
+      }
+    },
+    {
+      "XUEGwoo1X9Kz1myotYqHLv": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Capture screenshots",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 120,
+          "cd": 1710000000,
+          "md": 1710000000,
+          "agr": [
+            "VPBKRqFVE5ovBe8U5gCNfX"
+          ]
+        }
+      }
+    }
+  ],
+  "expected_output": "● Release Plan  (1/5)\n\n  Lk ▢ Draft announcement\n  7W ◼ Publish release notes\n\n  Quality Assurance\n    DT ▢ Run regression suite\n    XU ▢ Capture screenshots\n"
+}

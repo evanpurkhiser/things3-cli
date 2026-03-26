@@ -1,0 +1,7 @@
+{
+  "test_name": "test_areas_empty",
+  "cli_args": "areas",
+  "today_ts": null,
+  "journal": [],
+  "expected_output": "No areas.\n"
+}

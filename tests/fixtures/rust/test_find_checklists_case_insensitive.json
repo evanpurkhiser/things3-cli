@@ -1,0 +1,39 @@
+{
+  "test_name": "test_find_checklists_case_insensitive",
+  "cli_args": "find dentist --checklists",
+  "today_ts": null,
+  "journal": [
+    {
+      "AAA111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Parent task",
+          "st": 1,
+          "ss": 0,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600
+        }
+      }
+    },
+    {
+      "CCC111111111111111111111": {
+        "t": 0,
+        "e": "ChecklistItem3",
+        "p": {
+          "tt": "Book Dentist",
+          "ts": [
+            "AAA111111111111111111111"
+          ],
+          "ss": 0,
+          "ix": 1,
+          "cd": 1735689600,
+          "md": 1735689600
+        }
+      }
+    }
+  ],
+  "expected_output": "⌗ Find  (1 task)\n\n  A ▢ Parent task\n  C └╴○ Book Dentist\n"
+}

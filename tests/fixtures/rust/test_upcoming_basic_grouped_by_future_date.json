@@ -1,0 +1,118 @@
+{
+  "test_name": "test_upcoming_basic_grouped_by_future_date",
+  "cli_args": "upcoming",
+  "today_ts": 1774396800,
+  "journal": [
+    {
+      "RTKdozwkfpXDhugqJBb9A5": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Prepare quarterly plan",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 10,
+          "cd": 1,
+          "md": 1,
+          "sr": 4071254400
+        }
+      }
+    },
+    {
+      "ShuDMT6hGzqxdTjt9ajstS": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Send kickoff email",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 20,
+          "cd": 1,
+          "md": 1,
+          "sr": 4071254400
+        }
+      }
+    },
+    {
+      "RbCMxciUzSDVCYYXVjAgVD": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Book team retro",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 30,
+          "cd": 1,
+          "md": 1,
+          "sr": 4071427200
+        }
+      }
+    },
+    {
+      "UAM9jermS7i1WZG7ky7kMg": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Should not show (scheduled today)",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 40,
+          "cd": 1,
+          "md": 1,
+          "sr": 1774396800
+        }
+      }
+    },
+    {
+      "AnVsD8K9ZUNbjkeVsEmeZy": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Should not show (scheduled in past)",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 50,
+          "cd": 1,
+          "md": 1,
+          "sr": 946684800
+        }
+      }
+    },
+    {
+      "Vdi8v72EndV5jM54gSHbRy": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Should not show (someday unscheduled)",
+          "tp": 0,
+          "ss": 0,
+          "st": 2,
+          "ix": 60,
+          "cd": 1,
+          "md": 1
+        }
+      }
+    },
+    {
+      "XNUinUJXsc5dZFXNuN6ya": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Should not show (backlog unscheduled)",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 70,
+          "cd": 1,
+          "md": 1
+        }
+      }
+    }
+  ],
+  "expected_output": "▷ Upcoming  (3 tasks)\n\n  2099-01-05\n    RT ▢ Prepare quarterly plan\n    Sh ▢ Send kickoff email\n\n  2099-01-07\n    Rb ▢ Book team retro\n"
+}

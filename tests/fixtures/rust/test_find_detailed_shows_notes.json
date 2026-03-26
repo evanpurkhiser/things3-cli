@@ -1,0 +1,29 @@
+{
+  "test_name": "test_find_detailed_shows_notes",
+  "cli_args": "find --detailed",
+  "today_ts": null,
+  "journal": [
+    {
+      "AAA111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Task with note",
+          "st": 1,
+          "ss": 0,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600,
+          "nt": {
+            "_t": "tx",
+            "t": 1,
+            "ch": 0,
+            "v": "important detail"
+          }
+        }
+      }
+    }
+  ],
+  "expected_output": "⌗ Find  (1 task)\n\n  A ▢ Task with note\n    └ important detail\n"
+}

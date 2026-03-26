@@ -1,0 +1,78 @@
+{
+  "test_name": "test_project_detailed_with_notes_and_checklist",
+  "cli_args": "project D --detailed",
+  "today_ts": null,
+  "journal": [
+    {
+      "Dxf7yNCKaPoWNBVM7zVi2p": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Conference Trip",
+          "tp": 1,
+          "ss": 0,
+          "st": 1,
+          "ix": 10,
+          "cd": 1710000000,
+          "md": 1710000000
+        }
+      }
+    },
+    {
+      "GXNeg2wqB1B5diQduwUykr": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Finalize packing",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 10,
+          "cd": 1710000000,
+          "md": 1710000000,
+          "pr": [
+            "Dxf7yNCKaPoWNBVM7zVi2p"
+          ],
+          "nt": {
+            "_t": "tx",
+            "t": 1,
+            "v": "Bring carry-on only\nCharge battery pack"
+          }
+        }
+      }
+    },
+    {
+      "9ZZLUGDsHVEgh5LpLPzzvu": {
+        "t": 0,
+        "e": "ChecklistItem3",
+        "p": {
+          "tt": "Passport",
+          "ts": [
+            "GXNeg2wqB1B5diQduwUykr"
+          ],
+          "ss": 0,
+          "ix": 10,
+          "cd": 1710000000,
+          "md": 1710000000
+        }
+      }
+    },
+    {
+      "SA4EbQAPS5a8e5s6ZMfFvT": {
+        "t": 0,
+        "e": "ChecklistItem3",
+        "p": {
+          "tt": "Headphones",
+          "ts": [
+            "GXNeg2wqB1B5diQduwUykr"
+          ],
+          "ss": 3,
+          "ix": 20,
+          "cd": 1710000000,
+          "md": 1710000000
+        }
+      }
+    }
+  ],
+  "expected_output": "● Conference Trip  (0/1)\n\n  G ▢ Finalize packing\n    │ Bring carry-on only\n    │ Charge battery pack\n    │\n  9 ├╴○ Passport\n  S └╴● Headphones\n"
+}

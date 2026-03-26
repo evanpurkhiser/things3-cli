@@ -1,0 +1,99 @@
+{
+  "test_name": "test_area_detailed_shows_task_and_project_notes_with_checklist",
+  "cli_args": "area U8aRJPUWBUpxdLHYMfeACH --detailed",
+  "today_ts": null,
+  "journal": [
+    {
+      "U8aRJPUWBUpxdLHYMfeACH": {
+        "t": 0,
+        "e": "Area3",
+        "p": {
+          "tt": "Personal",
+          "ix": 10,
+          "tg": []
+        }
+      }
+    },
+    {
+      "8bEgKUa2dQ4oGE4cyuTXKF": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Plan weekend",
+          "tp": 0,
+          "st": 1,
+          "ss": 0,
+          "ix": 10,
+          "cd": 1,
+          "md": 1,
+          "ar": [
+            "U8aRJPUWBUpxdLHYMfeACH"
+          ],
+          "nt": {
+            "_t": "tx",
+            "t": 1,
+            "ch": 0,
+            "v": "Book hotel\nPack bags"
+          }
+        }
+      }
+    },
+    {
+      "F76ZoCWTj4h32H445Uok2n": {
+        "t": 0,
+        "e": "ChecklistItem3",
+        "p": {
+          "tt": "Charge camera",
+          "ts": [
+            "8bEgKUa2dQ4oGE4cyuTXKF"
+          ],
+          "ss": 0,
+          "ix": 10,
+          "cd": 1,
+          "md": 1
+        }
+      }
+    },
+    {
+      "TwtVbKk4DzvJqzjjL7ppG5": {
+        "t": 0,
+        "e": "ChecklistItem3",
+        "p": {
+          "tt": "Print tickets",
+          "ts": [
+            "8bEgKUa2dQ4oGE4cyuTXKF"
+          ],
+          "ss": 3,
+          "ix": 20,
+          "cd": 1,
+          "md": 1
+        }
+      }
+    },
+    {
+      "9i6ww8T9FUwJp72jqSHCCq": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Spring cleaning",
+          "tp": 1,
+          "st": 1,
+          "ss": 0,
+          "ix": 20,
+          "cd": 1,
+          "md": 1,
+          "ar": [
+            "U8aRJPUWBUpxdLHYMfeACH"
+          ],
+          "nt": {
+            "_t": "tx",
+            "t": 1,
+            "ch": 0,
+            "v": "Closet first\nThen garage"
+          }
+        }
+      }
+    }
+  ],
+  "expected_output": "◆ Personal  (1 project, 1 task)\n\n  8 ▢ Plan weekend\n    │ Book hotel\n    │ Pack bags\n    │\n  F ├╴○ Charge camera\n  T └╴● Print tickets\n\n  9 ◯ Spring cleaning\n    │ Closet first\n    └ Then garage\n"
+}

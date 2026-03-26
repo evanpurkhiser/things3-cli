@@ -1,0 +1,56 @@
+{
+  "test_name": "test_find_deadline_gte",
+  "cli_args": "find --deadline '>=2026-04-01'",
+  "today_ts": null,
+  "journal": [
+    {
+      "AAA111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "On the date",
+          "st": 1,
+          "ss": 0,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600,
+          "dd": 1775001600
+        }
+      }
+    },
+    {
+      "BBB111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "After",
+          "st": 1,
+          "ss": 0,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600,
+          "dd": 1775088000
+        }
+      }
+    },
+    {
+      "CCC111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Before",
+          "st": 1,
+          "ss": 0,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600,
+          "dd": 1774915200
+        }
+      }
+    }
+  ],
+  "expected_output": "⌗ Find  (2 tasks)\n\n  A ▢ On the date  ⚑ due by 2026-04-01\n  B ▢ After  ⚑ due by 2026-04-02\n"
+}

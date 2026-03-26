@@ -1,0 +1,54 @@
+{
+  "test_name": "test_tags_subtags_under_single_parent",
+  "cli_args": "tags",
+  "today_ts": null,
+  "journal": [
+    {
+      "AAAAAAAAAAAAAAAAAAAparent": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Work",
+          "ix": 10
+        }
+      }
+    },
+    {
+      "BBBBBBBBBBBBBBBBBBBchild1": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Meetings",
+          "ix": 20,
+          "pn": [
+            "AAAAAAAAAAAAAAAAAAAparent"
+          ]
+        }
+      }
+    },
+    {
+      "CCCCCCCCCCCCCCCCCCCchild2": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Projects",
+          "ix": 30,
+          "pn": [
+            "AAAAAAAAAAAAAAAAAAAparent"
+          ]
+        }
+      }
+    },
+    {
+      "DDDDDDDDDDDDDDDDDDDtoplvl2": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Personal",
+          "ix": 40
+        }
+      }
+    }
+  ],
+  "expected_output": "⌗ Tags  (4)\n\n  ⌗ Work\n  ├╴⌗ Meetings\n  └╴⌗ Projects\n  ⌗ Personal\n"
+}

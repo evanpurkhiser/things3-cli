@@ -1,0 +1,40 @@
+{
+  "test_name": "test_find_scheduled_lt",
+  "cli_args": "find --scheduled '<2025-01-01'",
+  "today_ts": null,
+  "journal": [
+    {
+      "AAA111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Old",
+          "st": 1,
+          "ss": 0,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600,
+          "sr": 1717200000
+        }
+      }
+    },
+    {
+      "BBB111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "New",
+          "st": 1,
+          "ss": 0,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600,
+          "sr": 1780272000
+        }
+      }
+    }
+  ],
+  "expected_output": "⌗ Find  (1 task)\n\n  A ▢ ⭑ Old\n"
+}

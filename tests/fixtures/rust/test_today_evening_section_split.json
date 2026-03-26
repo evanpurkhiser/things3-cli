@@ -1,0 +1,45 @@
+{
+  "test_name": "test_today_evening_section_split",
+  "cli_args": "today",
+  "today_ts": 1774396800,
+  "journal": [
+    {
+      "A7h5eCi24RvAWKC3Hv3muf": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Plan day",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 10,
+          "cd": 1,
+          "md": 1,
+          "sr": 1774396800,
+          "tir": 1774396800,
+          "ti": 10
+        }
+      }
+    },
+    {
+      "KGvAPpMrzHAKMdgMiERP1V": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Review finances",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 20,
+          "cd": 1,
+          "md": 1,
+          "sr": 1774396800,
+          "tir": 1774396800,
+          "ti": 20,
+          "sb": 1
+        }
+      }
+    }
+  ],
+  "expected_output": "⭑ Today  (2 tasks)\n\n  A ▢ Plan day\n\n☽ This Evening\n\n  K ▢ Review finances\n"
+}

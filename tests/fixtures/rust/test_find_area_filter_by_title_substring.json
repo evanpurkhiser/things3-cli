@@ -1,0 +1,51 @@
+{
+  "test_name": "test_find_area_filter_by_title_substring",
+  "cli_args": "find --area Personal",
+  "today_ts": null,
+  "journal": [
+    {
+      "AAREA111111111111111111A": {
+        "t": 0,
+        "e": "Area3",
+        "p": {
+          "tt": "Personal",
+          "ix": 10
+        }
+      }
+    },
+    {
+      "AAA111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Read book",
+          "st": 1,
+          "ss": 0,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600,
+          "ar": [
+            "AAREA111111111111111111A"
+          ]
+        }
+      }
+    },
+    {
+      "BBB111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Write report",
+          "st": 1,
+          "ss": 0,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600
+        }
+      }
+    }
+  ],
+  "expected_output": "⌗ Find  (1 task)\n\n  AAA ▢ Read book\n"
+}

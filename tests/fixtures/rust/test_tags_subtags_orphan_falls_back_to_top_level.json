@@ -1,0 +1,80 @@
+{
+  "test_name": "test_tags_subtags_orphan_falls_back_to_top_level",
+  "cli_args": "tags",
+  "today_ts": null,
+  "journal": [
+    {
+      "AAAAAAAAAAAAAAAAAAAparent": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Places",
+          "ix": 10
+        }
+      }
+    },
+    {
+      "BBBBBBBBBBBBBBBBBBBchild1": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Cafe",
+          "ix": 20,
+          "pn": [
+            "AAAAAAAAAAAAAAAAAAAparent"
+          ]
+        }
+      }
+    },
+    {
+      "CCCCCCCCCCCCCCCCCCCchild2": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Restaurant",
+          "ix": 30,
+          "pn": [
+            "AAAAAAAAAAAAAAAAAAAparent"
+          ]
+        }
+      }
+    },
+    {
+      "DDDDDDDDDDDDDDDDDDDchild3": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Bar",
+          "ix": 40,
+          "pn": [
+            "AAAAAAAAAAAAAAAAAAAparent"
+          ]
+        }
+      }
+    },
+    {
+      "EEEEEEEEEEEEEEEEEEEorphan": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Orphan",
+          "ix": 50,
+          "pn": [
+            "ZZZZZZZZZZZZZZZZZZZmissing"
+          ]
+        }
+      }
+    },
+    {
+      "FFFFFFFFFFFFFFFFFFFtoplvl2": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Errands",
+          "ix": 60
+        }
+      }
+    }
+  ],
+  "expected_output": "⌗ Tags  (6)\n\n  ⌗ Places\n  ├╴⌗ Cafe\n  ├╴⌗ Restaurant\n  └╴⌗ Bar\n  ⌗ Orphan\n  ⌗ Errands\n"
+}

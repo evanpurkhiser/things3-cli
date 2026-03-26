@@ -1,0 +1,92 @@
+{
+  "test_name": "test_someday_filters_future_scheduled_templates_and_project_tasks",
+  "cli_args": "someday",
+  "today_ts": null,
+  "journal": [
+    {
+      "BpPQW1vgHjAhTQGmCnGno5": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Read design books",
+          "tp": 0,
+          "ss": 0,
+          "st": 2,
+          "ix": 5,
+          "cd": 1,
+          "md": 1
+        }
+      }
+    },
+    {
+      "HFiZWtutsAB7u9GeDToisD": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Cabin renovation",
+          "tp": 1,
+          "ss": 0,
+          "st": 2,
+          "ix": 10,
+          "cd": 1,
+          "md": 1
+        }
+      }
+    },
+    {
+      "LgYa4JKjhGtSboGa59LaAS": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Plan winter trip",
+          "tp": 0,
+          "ss": 0,
+          "st": 2,
+          "ix": 15,
+          "cd": 1,
+          "md": 1,
+          "sr": 1774569600
+        }
+      }
+    },
+    {
+      "G5cCWeV76KdYzuRFHpfU4X": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Water houseplants",
+          "tp": 0,
+          "ss": 0,
+          "st": 2,
+          "ix": 20,
+          "cd": 1,
+          "md": 1,
+          "rr": {
+            "ft": 0,
+            "ic": 1,
+            "nt": 1
+          }
+        }
+      }
+    },
+    {
+      "PUcyA7jg4UW6zksgnHeA7v": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Research insulation options",
+          "tp": 0,
+          "ss": 0,
+          "st": 2,
+          "ix": 25,
+          "cd": 1,
+          "md": 1,
+          "pr": [
+            "HFiZWtutsAB7u9GeDToisD"
+          ]
+        }
+      }
+    }
+  ],
+  "expected_output": "⬚ Someday  (2 items)\n\n  H ◌ Cabin renovation\n\n  B ⬚ Read design books\n"
+}

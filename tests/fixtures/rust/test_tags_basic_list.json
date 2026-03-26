@@ -1,0 +1,28 @@
+{
+  "test_name": "test_tags_basic_list",
+  "cli_args": "tags",
+  "today_ts": null,
+  "journal": [
+    {
+      "GKYVAxEFFoZX9qRavLpSxC": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Home",
+          "ix": 10
+        }
+      }
+    },
+    {
+      "5QpptG3mkc9Euc372cZH2X": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Work",
+          "ix": 20
+        }
+      }
+    }
+  ],
+  "expected_output": "⌗ Tags  (2)\n\n  ⌗ Home\n  ⌗ Work\n"
+}

@@ -1,0 +1,39 @@
+{
+  "test_name": "test_anytime_basic_list",
+  "cli_args": "anytime",
+  "today_ts": 1774396800,
+  "journal": [
+    {
+      "6aXZoaKdhWbtkVDjkjSh6t": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Draft roadmap",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 10,
+          "cd": 1,
+          "md": 1
+        }
+      }
+    },
+    {
+      "3eyRB1WYUNtkYfE8B3MGPn": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Pay rent",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 20,
+          "cd": 1,
+          "md": 1,
+          "sr": 1774396800
+        }
+      }
+    }
+  ],
+  "expected_output": "◌ Anytime  (2 tasks)\n\n  6 ▢ Draft roadmap\n  3 ▢ ⭑ Pay rent\n"
+}

@@ -1,0 +1,7 @@
+{
+  "test_name": "test_upcoming_empty",
+  "cli_args": "upcoming",
+  "today_ts": 1774396800,
+  "journal": [],
+  "expected_output": "No upcoming tasks.\n"
+}

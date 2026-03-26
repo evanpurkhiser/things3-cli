@@ -1,0 +1,79 @@
+{
+  "test_name": "test_find_tag_multiple_or",
+  "cli_args": "find --tag Work --tag Urgent",
+  "today_ts": null,
+  "journal": [
+    {
+      "TTAG1111111111111111111T": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Work",
+          "ix": 10
+        }
+      }
+    },
+    {
+      "TTAG2222222222222222222T": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Urgent",
+          "ix": 10
+        }
+      }
+    },
+    {
+      "AAA111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Work task",
+          "st": 1,
+          "ss": 0,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600,
+          "tg": [
+            "TTAG1111111111111111111T"
+          ]
+        }
+      }
+    },
+    {
+      "BBB111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Urgent task",
+          "st": 1,
+          "ss": 0,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600,
+          "tg": [
+            "TTAG2222222222222222222T"
+          ]
+        }
+      }
+    },
+    {
+      "CCC111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Untagged task",
+          "st": 1,
+          "ss": 0,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600
+        }
+      }
+    }
+  ],
+  "expected_output": "⌗ Find  (2 tasks)\n\n  A ▢ Work task  [Work]\n  B ▢ Urgent task  [Urgent]\n"
+}

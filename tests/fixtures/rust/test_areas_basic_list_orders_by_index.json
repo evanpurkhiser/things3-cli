@@ -1,0 +1,38 @@
+{
+  "test_name": "test_areas_basic_list_orders_by_index",
+  "cli_args": "areas",
+  "today_ts": null,
+  "journal": [
+    {
+      "DHWWGX9ZZsqznexxPvdUCG": {
+        "t": 0,
+        "e": "Area3",
+        "p": {
+          "tt": "Errands",
+          "ix": 20
+        }
+      }
+    },
+    {
+      "AeAbN2h6vFNJawRFx7mgdX": {
+        "t": 0,
+        "e": "Area3",
+        "p": {
+          "tt": "Home",
+          "ix": 10
+        }
+      }
+    },
+    {
+      "TiH5XjSXigme6pwMctAwjH": {
+        "t": 0,
+        "e": "Area3",
+        "p": {
+          "tt": "Work",
+          "ix": 30
+        }
+      }
+    }
+  ],
+  "expected_output": "◆ Areas  (3)\n\n  A ◆ Home\n  D ◆ Errands\n  T ◆ Work\n"
+}

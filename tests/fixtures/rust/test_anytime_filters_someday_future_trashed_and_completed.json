@@ -1,0 +1,85 @@
+{
+  "test_name": "test_anytime_filters_someday_future_trashed_and_completed",
+  "cli_args": "anytime",
+  "today_ts": 1774396800,
+  "journal": [
+    {
+      "6aXZoaKdhWbtkVDjkjSh6t": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Visible anytime task",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 10,
+          "cd": 1,
+          "md": 1
+        }
+      }
+    },
+    {
+      "JGHbpq9qT112kF3pMfHYVN": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Someday backlog",
+          "tp": 0,
+          "ss": 0,
+          "st": 2,
+          "ix": 20,
+          "cd": 1,
+          "md": 1
+        }
+      }
+    },
+    {
+      "EVm4iCcMXiBp4eWKojk2zp": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Future scheduled",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 30,
+          "cd": 1,
+          "md": 1,
+          "sr": 1774483200
+        }
+      }
+    },
+    {
+      "4LHrEe3jyYApPfnNPMPpxn": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Trashed task",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 40,
+          "cd": 1,
+          "md": 1,
+          "tr": true
+        }
+      }
+    },
+    {
+      "QSHXpCLatmt3h9DskZ1RMF": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Completed task",
+          "tp": 0,
+          "ss": 3,
+          "st": 1,
+          "ix": 50,
+          "cd": 1,
+          "md": 1
+        }
+      }
+    }
+  ],
+  "expected_output": "◌ Anytime  (1 tasks)\n\n  6 ▢ Visible anytime task\n"
+}

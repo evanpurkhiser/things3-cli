@@ -1,0 +1,116 @@
+{
+  "test_name": "test_inbox_ignores_project_and_area_scoped_tasks",
+  "cli_args": "inbox",
+  "today_ts": null,
+  "journal": [
+    {
+      "NtDfRHDHdvGke5HdLrXBTi": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Top-level inbox task",
+          "st": 0,
+          "ss": 0,
+          "ix": 10,
+          "cd": 1710000000,
+          "md": 1710000000
+        }
+      }
+    },
+    {
+      "MFF5U5YwqoP2yoMC4DJ3Vc": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Kitchen Refresh",
+          "tp": 1,
+          "st": 1,
+          "ss": 0,
+          "ix": 100,
+          "cd": 1710000000,
+          "md": 1710000000
+        }
+      }
+    },
+    {
+      "DrtEZ6JNAkpZ6XnE7nkMM9": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Choose tile samples",
+          "st": 0,
+          "ss": 0,
+          "pr": [
+            "MFF5U5YwqoP2yoMC4DJ3Vc"
+          ],
+          "ix": 110,
+          "cd": 1710000200,
+          "md": 1710000200
+        }
+      }
+    },
+    {
+      "K1Hx4pgPjYDocEx695rSeM": {
+        "t": 0,
+        "e": "Area3",
+        "p": {
+          "tt": "Work",
+          "ix": 200
+        }
+      }
+    },
+    {
+      "QNKTu3e1HXKNLZ6KW7RRQD": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Draft quarterly goals",
+          "st": 0,
+          "ss": 0,
+          "ar": [
+            "K1Hx4pgPjYDocEx695rSeM"
+          ],
+          "ix": 210,
+          "cd": 1710000300,
+          "md": 1710000300
+        }
+      }
+    },
+    {
+      "Lm87wGotuCnt2FbkAguBbV": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Migration Plan",
+          "tp": 1,
+          "st": 1,
+          "ss": 0,
+          "ar": [
+            "K1Hx4pgPjYDocEx695rSeM"
+          ],
+          "ix": 220,
+          "cd": 1710000400,
+          "md": 1710000400
+        }
+      }
+    },
+    {
+      "76SUcghw2hNShXDWdjofDT": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Write rollout checklist",
+          "st": 0,
+          "ss": 0,
+          "pr": [
+            "Lm87wGotuCnt2FbkAguBbV"
+          ],
+          "ix": 230,
+          "cd": 1710000500,
+          "md": 1710000500
+        }
+      }
+    }
+  ],
+  "expected_output": "⬓ Inbox  (1 tasks)\n\n  N ▢ Top-level inbox task\n"
+}

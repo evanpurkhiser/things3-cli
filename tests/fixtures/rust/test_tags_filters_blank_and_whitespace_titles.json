@@ -1,0 +1,58 @@
+{
+  "test_name": "test_tags_filters_blank_and_whitespace_titles",
+  "cli_args": "tags",
+  "today_ts": null,
+  "journal": [
+    {
+      "5DpSbPqqW43rGrmHeTtpYC": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "",
+          "ix": 5
+        }
+      }
+    },
+    {
+      "V6ovbTrWN2p5yCNo3GaNPS": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "   ",
+          "ix": 10
+        }
+      }
+    },
+    {
+      "SodAejXUasPJGBoLKdJ7hy": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Errands",
+          "ix": 15
+        }
+      }
+    },
+    {
+      "Ka2MbPmKkLgmR3v3jE6LU9": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "\t",
+          "ix": 20
+        }
+      }
+    },
+    {
+      "QfcNkgb1LwJqmUyXQhcwGN": {
+        "t": 0,
+        "e": "Tag4",
+        "p": {
+          "tt": "Personal",
+          "ix": 25
+        }
+      }
+    }
+  ],
+  "expected_output": "⌗ Tags  (2)\n\n  ⌗ Errands\n  ⌗ Personal\n"
+}

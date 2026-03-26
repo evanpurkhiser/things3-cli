@@ -1,0 +1,41 @@
+{
+  "test_name": "test_find_project_filter_no_match",
+  "cli_args": "find --project NoSuchProject",
+  "today_ts": null,
+  "journal": [
+    {
+      "PPROJECT11111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Q1 Launch",
+          "st": 1,
+          "ss": 0,
+          "tp": 1,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600
+        }
+      }
+    },
+    {
+      "AAA111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Write spec",
+          "st": 1,
+          "ss": 0,
+          "tp": 0,
+          "ix": 10,
+          "cd": 1735689600,
+          "md": 1735689600,
+          "pr": [
+            "PPROJECT11111111111111111"
+          ]
+        }
+      }
+    }
+  ],
+  "expected_output": "No matching tasks.\n"
+}

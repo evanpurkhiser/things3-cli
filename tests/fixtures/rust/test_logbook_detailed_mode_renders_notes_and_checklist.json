@@ -1,0 +1,82 @@
+{
+  "test_name": "test_logbook_detailed_mode_renders_notes_and_checklist",
+  "cli_args": "logbook --detailed",
+  "today_ts": null,
+  "journal": [
+    {
+      "7g44WJzgFu7DGv8WPLCkVz": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Write retro",
+          "st": 1,
+          "ss": 3,
+          "ix": 10,
+          "sp": 1742112000,
+          "cd": 1,
+          "md": 1,
+          "nt": {
+            "_t": "tx",
+            "t": 1,
+            "ch": 0,
+            "v": "Capture wins\nCapture risks"
+          }
+        }
+      }
+    },
+    {
+      "24BdG2FiV1krbovxRHdc1q": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Pack launch checklist",
+          "st": 1,
+          "ss": 3,
+          "ix": 20,
+          "sp": 1742110200,
+          "cd": 1,
+          "md": 1,
+          "nt": {
+            "_t": "tx",
+            "t": 1,
+            "ch": 0,
+            "v": "Before handoff"
+          }
+        }
+      }
+    },
+    {
+      "9czK3Vt74WxoDc7nCP8PWW": {
+        "t": 0,
+        "e": "ChecklistItem3",
+        "p": {
+          "tt": "Verify docs",
+          "ts": [
+            "24BdG2FiV1krbovxRHdc1q"
+          ],
+          "ss": 0,
+          "ix": 10,
+          "cd": 1,
+          "md": 1
+        }
+      }
+    },
+    {
+      "YBLQvdCsb6DVawF7rGSZpU": {
+        "t": 0,
+        "e": "ChecklistItem3",
+        "p": {
+          "tt": "Post update",
+          "ts": [
+            "24BdG2FiV1krbovxRHdc1q"
+          ],
+          "ss": 3,
+          "ix": 20,
+          "cd": 1,
+          "md": 1
+        }
+      }
+    }
+  ],
+  "expected_output": "✓ Logbook  (2 tasks)\n\n  2025-03-16\n    7 ◼ Write retro\n      │ Capture wins\n      └ Capture risks\n    2 ◼ Pack launch checklist\n      │ Before handoff\n      │\n    9 ├╴○ Verify docs\n    Y └╴● Post update\n"
+}

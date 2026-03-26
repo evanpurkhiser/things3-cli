@@ -1,0 +1,36 @@
+{
+  "test_name": "test_inbox_basic_list",
+  "cli_args": "inbox",
+  "today_ts": null,
+  "journal": [
+    {
+      "XnDJNLT4hkk4hXBGLkoVH": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Buy oat milk",
+          "st": 0,
+          "ss": 0,
+          "ix": 10,
+          "cd": 1710000000,
+          "md": 1710000000
+        }
+      }
+    },
+    {
+      "ESZrdo2KmGjgznpPCHtBA7": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Email landlord",
+          "st": 0,
+          "ss": 0,
+          "ix": 20,
+          "cd": 1710000100,
+          "md": 1710000100
+        }
+      }
+    }
+  ],
+  "expected_output": "⬓ Inbox  (2 tasks)\n\n  X ▢ Buy oat milk\n  E ▢ Email landlord\n"
+}

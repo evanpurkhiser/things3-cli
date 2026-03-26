@@ -1,0 +1,61 @@
+{
+  "test_name": "test_projects_detailed_shows_project_notes",
+  "cli_args": "projects --detailed",
+  "today_ts": null,
+  "journal": [
+    {
+      "NNKhZuXngWNVsiZ9xMoeDK": {
+        "t": 0,
+        "e": "Area3",
+        "p": {
+          "tt": "Personal",
+          "ix": 10
+        }
+      }
+    },
+    {
+      "KdfyiRxGVe3QFBLuT9Y9uD": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Trip Planning",
+          "tp": 1,
+          "st": 1,
+          "ss": 0,
+          "ix": 10,
+          "cd": 1,
+          "md": 1,
+          "ar": [
+            "NNKhZuXngWNVsiZ9xMoeDK"
+          ],
+          "nt": {
+            "_t": "tx",
+            "t": 1,
+            "v": "Book flights\nRenew passport"
+          }
+        }
+      }
+    },
+    {
+      "5kjDzoGubps33DLVC9ptR6": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Reading List",
+          "tp": 1,
+          "st": 1,
+          "ss": 0,
+          "ix": 20,
+          "cd": 1,
+          "md": 1,
+          "nt": {
+            "_t": "tx",
+            "t": 1,
+            "v": "Pick 3 biographies"
+          }
+        }
+      }
+    }
+  ],
+  "expected_output": "● Projects  (2)\n\n  5 ◯ Reading List\n    └ Pick 3 biographies\n\n  N Personal\n    K ◯ Trip Planning\n      │ Book flights\n      └ Renew passport\n"
+}
