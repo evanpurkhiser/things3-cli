@@ -15,8 +15,14 @@ pub struct ProjectArgs {
 }
 
 impl Command for ProjectArgs {
-    fn run(&self, cli: &Cli, out: &mut dyn std::io::Write) -> Result<()> {
+    fn run_with_ctx(
+        &self,
+        cli: &Cli,
+        out: &mut dyn std::io::Write,
+        ctx: &mut dyn crate::cmd_ctx::CmdCtx,
+    ) -> Result<()> {
         let store = cli.load_store()?;
+        let today = ctx.today();
         let (task_opt, err, ambiguous) = store.resolve_mark_identifier(&self.project_id);
         let Some(project) = task_opt else {
             eprintln!("{err}");
@@ -95,7 +101,7 @@ impl Command for ProjectArgs {
                 &[BOLD, GREEN],
                 cli.no_color,
             ),
-            fmt_deadline(project.deadline, cli.no_color),
+            fmt_deadline(project.deadline, &today, cli.no_color),
             tags
         )?;
 
@@ -132,7 +138,16 @@ impl Command for ProjectArgs {
             writeln!(out)?;
             for t in ungrouped {
                 let line =
-                    fmt_task_line(&t, &store, false, true, Some(id_prefix_len), cli.no_color);
+                    fmt_task_line(
+                        &t,
+                        &store,
+                        false,
+                        true,
+                        false,
+                        Some(id_prefix_len),
+                        &today,
+                        cli.no_color,
+                    );
                 writeln!(
                     out,
                     "{}",
@@ -163,7 +178,9 @@ impl Command for ProjectArgs {
                             &store,
                             false,
                             true,
+                            false,
                             Some(id_prefix_len),
+                            &today,
                             cli.no_color,
                         );
                         writeln!(

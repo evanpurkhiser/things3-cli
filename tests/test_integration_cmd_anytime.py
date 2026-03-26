@@ -16,15 +16,18 @@ def _task_create(
     title: str,
     *,
     ix: int,
+    tp: int = 0,
     st: int = 1,
     ss: int = 0,
     sr: int | None = None,
     tr: bool = False,
     nt: str | dict | None = None,
+    pr: list[str] | None = None,
+    ar: list[str] | None = None,
 ) -> dict:
     props = {
         "tt": title,
-        "tp": 0,
+        "tp": tp,
         "ss": ss,
         "st": st,
         "ix": ix,
@@ -37,7 +40,21 @@ def _task_create(
         props["tr"] = True
     if nt is not None:
         props["nt"] = nt
+    if pr is not None:
+        props["pr"] = pr
+    if ar is not None:
+        props["ar"] = ar
     return {uuid: {"t": 0, "e": "Task6", "p": props}}
+
+
+def _area_create(uuid: str, title: str, *, ix: int) -> dict:
+    return {
+        uuid: {
+            "t": 0,
+            "e": "Area3",
+            "p": {"tt": title, "ix": ix},
+        }
+    }
 
 
 def _checklist_create(
@@ -117,4 +134,54 @@ def test_anytime_detailed_with_notes_and_checklist(store_from_journal) -> None:
 
     assert run_cli("anytime --detailed", store_from_journal(journal)) == get_fixture(
         "anytime_detailed"
+    )
+
+
+def test_anytime_groups_by_area_and_project_with_hiding(store_from_journal) -> None:
+    area_uuid = "B1111111111111111111111"
+    project_uuid = "C1111111111111111111111"
+    project_no_area_uuid = "P1111111111111111111111"
+    journal = [
+        _task_create("A1111111111111111111111", "Loose task", ix=10),
+        _area_create(area_uuid, "Home", ix=1),
+        _task_create(
+            project_uuid,
+            "Renovation",
+            ix=15,
+            tp=1,
+            ar=[area_uuid],
+        ),
+        _task_create(project_no_area_uuid, "Errands", ix=17, tp=1),
+        _task_create("D1111111111111111111111", "Area task", ix=20, ar=[area_uuid]),
+        _task_create(
+            "I1111111111111111111111",
+            "Project-only task 1",
+            ix=25,
+            pr=[project_no_area_uuid],
+        ),
+        _task_create(
+            "J1111111111111111111111",
+            "Project-only task 2",
+            ix=26,
+            pr=[project_no_area_uuid],
+        ),
+        _task_create(
+            "E1111111111111111111111", "Project task 1", ix=30, pr=[project_uuid]
+        ),
+        _task_create(
+            "F1111111111111111111111", "Project task 2", ix=40, pr=[project_uuid]
+        ),
+        _task_create(
+            "G1111111111111111111111", "Project task 3", ix=50, pr=[project_uuid]
+        ),
+        _task_create(
+            "H1111111111111111111111",
+            "Project task 4 (hidden)",
+            ix=60,
+            pr=[project_uuid],
+        ),
+    ]
+
+    assert run_cli("anytime", store_from_journal(journal)) == get_fixture(
+        "anytime_grouped_hiding"
     )

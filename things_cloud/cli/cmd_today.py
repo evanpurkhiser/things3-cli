@@ -77,6 +77,7 @@ def cmd_today(store: ThingsStore, args: argparse.Namespace) -> None:
                     item,
                     store,
                     show_today_markers=False,
+                    show_staged_today_marker=True,
                     id_prefix_len=id_prefix_len,
                 )
                 print(
@@ -106,6 +107,7 @@ def cmd_today(store: ThingsStore, args: argparse.Namespace) -> None:
                     item,
                     store,
                     show_today_markers=False,
+                    show_staged_today_marker=True,
                     id_prefix_len=id_prefix_len,
                 )
                 print(

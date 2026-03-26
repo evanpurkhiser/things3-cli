@@ -1,17 +1,16 @@
 use crate::app::Cli;
-use crate::cloud_writer::{CloudWriter, LiveCloudWriter};
+use crate::arg_types::IdentifierToken;
 use crate::commands::Command;
 use crate::common::{colored, DIM, GREEN, ICONS};
 use crate::wire::{EntityType, OperationType, TaskStatus, WireObject};
 use anyhow::Result;
-use chrono::Utc;
 use clap::Args;
 use serde_json::json;
 use std::collections::{BTreeMap, HashSet};
 
 #[derive(Debug, Args)]
 pub struct MarkArgs {
-    pub task_ids: Vec<String>,
+    pub task_ids: Vec<IdentifierToken>,
     #[arg(long)]
     pub done: bool,
     #[arg(long)]
@@ -24,10 +23,6 @@ pub struct MarkArgs {
     pub uncheck_ids: Option<String>,
     #[arg(long = "check-cancel")]
     pub check_cancel_ids: Option<String>,
-}
-
-fn now_ts() -> f64 {
-    Utc::now().timestamp_millis() as f64 / 1000.0
 }
 
 fn resolve_checklist_items(
@@ -163,16 +158,146 @@ fn validate_mark_target(
     String::new()
 }
 
+#[derive(Debug, Clone)]
+struct MarkCommitPlan {
+    changes: BTreeMap<String, WireObject>,
+}
+
+fn build_mark_status_plan(
+    args: &MarkArgs,
+    store: &crate::store::ThingsStore,
+    now: f64,
+) -> (MarkCommitPlan, Vec<crate::store::Task>, Vec<String>) {
+    let action = if args.done {
+        "done"
+    } else if args.incomplete {
+        "incomplete"
+    } else {
+        "canceled"
+    };
+
+    let mut targets = Vec::new();
+    let mut seen = HashSet::new();
+    for identifier in &args.task_ids {
+        let (task_opt, err, _) = store.resolve_mark_identifier(identifier.as_str());
+        let Some(task) = task_opt else {
+            eprintln!("{err}");
+            continue;
+        };
+        if !seen.insert(task.uuid.clone()) {
+            continue;
+        }
+        targets.push(task);
+    }
+
+    let mut updates = Vec::new();
+    let mut successes = Vec::new();
+    let mut errors = Vec::new();
+
+    for task in targets {
+        let validation_error = validate_mark_target(&task, action, store);
+        if !validation_error.is_empty() {
+            errors.push(format!("{} ({})", validation_error, task.title));
+            continue;
+        }
+
+        let stop_date = if action == "done" || action == "canceled" {
+            Some(now)
+        } else {
+            None
+        };
+
+        updates.push((
+            task.uuid.clone(),
+            if action == "done" {
+                3
+            } else if action == "incomplete" {
+                0
+            } else {
+                2
+            },
+            task.entity.clone(),
+            stop_date,
+        ));
+        successes.push(task);
+    }
+
+    let mut changes = BTreeMap::new();
+    for (uuid, status, entity, stop_date) in updates {
+        let mut props = BTreeMap::new();
+        props.insert("ss".to_string(), json!(status));
+        props.insert("sp".to_string(), json!(stop_date));
+        props.insert("md".to_string(), json!(now));
+        changes.insert(
+            uuid,
+            WireObject {
+                operation_type: OperationType::Update,
+                entity_type: Some(EntityType::from(entity)),
+                properties: props,
+            },
+        );
+    }
+
+    (MarkCommitPlan { changes }, successes, errors)
+}
+
+fn build_mark_checklist_plan(
+    args: &MarkArgs,
+    task: &crate::store::Task,
+    checklist_raw: &str,
+    now: f64,
+) -> std::result::Result<(MarkCommitPlan, Vec<crate::store::ChecklistItem>, String), String> {
+    let (items, err) = resolve_checklist_items(task, checklist_raw);
+    if !err.is_empty() {
+        return Err(err);
+    }
+
+    let (label, status): (&str, i32) = if args.check_ids.is_some() {
+        ("checked", 3)
+    } else if args.uncheck_ids.is_some() {
+        ("unchecked", 0)
+    } else {
+        ("canceled", 2)
+    };
+
+    let stop_date = if status == 3 || status == 2 {
+        Some(now)
+    } else {
+        None
+    };
+
+    let mut changes = BTreeMap::new();
+    for item in &items {
+        let mut props = BTreeMap::new();
+        props.insert("ss".to_string(), json!(status));
+        props.insert("sp".to_string(), json!(stop_date));
+        props.insert("md".to_string(), json!(now));
+        changes.insert(
+            item.uuid.clone(),
+            WireObject {
+                operation_type: OperationType::Update,
+                entity_type: Some(EntityType::ChecklistItem3),
+                properties: props,
+            },
+        );
+    }
+
+    Ok((MarkCommitPlan { changes }, items, label.to_string()))
+}
+
 impl Command for MarkArgs {
-    fn run(&self, cli: &Cli, out: &mut dyn std::io::Write) -> Result<()> {
+    fn run_with_ctx(
+        &self,
+        cli: &Cli,
+        out: &mut dyn std::io::Write,
+        ctx: &mut dyn crate::cmd_ctx::CmdCtx,
+    ) -> Result<()> {
         let store = cli.load_store()?;
         let checklist_raw = self
             .check_ids
             .as_ref()
             .or(self.uncheck_ids.as_ref())
             .or(self.check_cancel_ids.as_ref());
-
-        let mut writer = LiveCloudWriter::new()?;
 
         if let Some(checklist_raw) = checklist_raw {
             if self.task_ids.len() != 1 {
@@ -182,7 +307,7 @@ impl Command for MarkArgs {
                 return Ok(());
             }
 
-            let (task_opt, err, _) = store.resolve_mark_identifier(&self.task_ids[0]);
+            let (task_opt, err, _) = store.resolve_mark_identifier(self.task_ids[0].as_str());
             let Some(task) = task_opt else {
                 eprintln!("{err}");
                 return Ok(());
@@ -193,49 +318,21 @@ impl Command for MarkArgs {
                 return Ok(());
             }
 
-            let (items, err) = resolve_checklist_items(&task, checklist_raw);
-            if !err.is_empty() {
-                eprintln!("{err}");
-                return Ok(());
-            }
+            let (plan, items, label) =
+                match build_mark_checklist_plan(self, &task, checklist_raw, ctx.now_timestamp()) {
+                    Ok(v) => v,
+                    Err(err) => {
+                        eprintln!("{err}");
+                        return Ok(());
+                    }
+                };
 
-            let (label, status): (&str, i32) = if self.check_ids.is_some() {
-                ("checked", 3)
-            } else if self.uncheck_ids.is_some() {
-                ("unchecked", 0)
-            } else {
-                ("canceled", 2)
-            };
-
-            let now = now_ts();
-            let stop_date = if status == 3 || status == 2 {
-                Some(now)
-            } else {
-                None
-            };
-
-            let mut changes = BTreeMap::new();
-            for item in &items {
-                let mut props = BTreeMap::new();
-                props.insert("ss".to_string(), json!(status));
-                props.insert("sp".to_string(), json!(stop_date));
-                props.insert("md".to_string(), json!(now));
-                changes.insert(
-                    item.uuid.clone(),
-                    WireObject {
-                        operation_type: OperationType::Update,
-                        entity_type: Some(EntityType::ChecklistItem3),
-                        properties: props,
-                    },
-                );
-            }
-
-            if let Err(e) = writer.commit(changes, None) {
+            if let Err(e) = ctx.commit_changes(plan.changes, None) {
                 eprintln!("Failed to mark checklist items: {e}");
                 return Ok(());
             }
 
-            let title = match label {
+            let title = match label.as_str() {
                 "checked" => format!("{} Checked", ICONS.checklist_done),
                 "unchecked" => format!("{} Unchecked", ICONS.checklist_open),
                 _ => format!("{} Canceled", ICONS.checklist_canceled),
@@ -261,73 +358,16 @@ impl Command for MarkArgs {
             "canceled"
         };
 
-        let mut targets = Vec::new();
-        let mut seen = HashSet::new();
-        for identifier in &self.task_ids {
-            let (task_opt, err, _) = store.resolve_mark_identifier(identifier);
-            let Some(task) = task_opt else {
-                eprintln!("{err}");
-                continue;
-            };
-            if !seen.insert(task.uuid.clone()) {
-                continue;
-            }
-            targets.push(task);
+        let (plan, successes, errors) = build_mark_status_plan(self, &store, ctx.now_timestamp());
+        for err in errors {
+            eprintln!("{err}");
         }
 
-        let mut updates = Vec::new();
-        let mut successes = Vec::new();
-
-        for task in targets {
-            let validation_error = validate_mark_target(&task, action, &store);
-            if !validation_error.is_empty() {
-                eprintln!("{} ({})", validation_error, task.title);
-                continue;
-            }
-
-            let stop_date = if action == "done" || action == "canceled" {
-                Some(now_ts())
-            } else {
-                None
-            };
-
-            updates.push((
-                task.uuid.clone(),
-                if action == "done" {
-                    3
-                } else if action == "incomplete" {
-                    0
-                } else {
-                    2
-                },
-                task.entity.clone(),
-                stop_date,
-            ));
-            successes.push(task);
-        }
-
-        if updates.is_empty() {
+        if plan.changes.is_empty() {
             return Ok(());
         }
 
-        let now = now_ts();
-        let mut changes = BTreeMap::new();
-        for (uuid, status, entity, stop_date) in updates {
-            let mut props = BTreeMap::new();
-            props.insert("ss".to_string(), json!(status));
-            props.insert("sp".to_string(), json!(stop_date));
-            props.insert("md".to_string(), json!(now));
-            changes.insert(
-                uuid,
-                WireObject {
-                    operation_type: OperationType::Update,
-                    entity_type: Some(EntityType::from(entity)),
-                    properties: props,
-                },
-            );
-        }
-
-        if let Err(e) = writer.commit(changes, None) {
+        if let Err(e) = ctx.commit_changes(plan.changes, None) {
             eprintln!("Failed to mark items {}: {}", action, e);
             return Ok(());
         }
@@ -348,5 +388,218 @@ impl Command for MarkArgs {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::store::{fold_items, ThingsStore};
+    use serde_json::Value;
+
+    const NOW: f64 = 1_700_000_111.0;
+    const TASK_A: &str = "A7h5eCi24RvAWKC3Hv3muf";
+    const CHECK_A: &str = "MpkEei6ybkFS2n6SXvwfLf";
+    const CHECK_B: &str = "JFdhhhp37fpryAKu8UXwzK";
+    const TPL_A: &str = "Cv9nP3sTk6Xw8Yd4Eu5JqM";
+    const TPL_B: &str = "Dv1oQ4uVl7Yz9Ze5Fw6KrN";
+
+    fn build_store(entries: Vec<(String, WireObject)>) -> ThingsStore {
+        let mut item = BTreeMap::new();
+        for (uuid, obj) in entries {
+            item.insert(uuid, obj);
+        }
+        ThingsStore::from_raw_state(&fold_items([item]))
+    }
+
+    fn task(uuid: &str, title: &str, status: i32) -> (String, WireObject) {
+        (
+            uuid.to_string(),
+            WireObject {
+                operation_type: OperationType::Create,
+                entity_type: Some(EntityType::Task6),
+                properties: BTreeMap::from([
+                    ("tt".to_string(), json!(title)),
+                    ("tp".to_string(), json!(0)),
+                    ("ss".to_string(), json!(status)),
+                    ("st".to_string(), json!(0)),
+                    ("ix".to_string(), json!(0)),
+                    ("cd".to_string(), json!(1)),
+                    ("md".to_string(), json!(1)),
+                ]),
+            },
+        )
+    }
+
+    fn task_with_props(
+        uuid: &str,
+        title: &str,
+        extra: BTreeMap<String, Value>,
+    ) -> (String, WireObject) {
+        let mut props = BTreeMap::from([
+            ("tt".to_string(), json!(title)),
+            ("tp".to_string(), json!(0)),
+            ("ss".to_string(), json!(0)),
+            ("st".to_string(), json!(0)),
+            ("ix".to_string(), json!(0)),
+            ("cd".to_string(), json!(1)),
+            ("md".to_string(), json!(1)),
+        ]);
+        for (k, v) in extra {
+            props.insert(k, v);
+        }
+        (
+            uuid.to_string(),
+            WireObject {
+                operation_type: OperationType::Create,
+                entity_type: Some(EntityType::Task6),
+                properties: props,
+            },
+        )
+    }
+
+    fn checklist(uuid: &str, task_uuid: &str, title: &str, ix: i32) -> (String, WireObject) {
+        (
+            uuid.to_string(),
+            WireObject {
+                operation_type: OperationType::Create,
+                entity_type: Some(EntityType::ChecklistItem3),
+                properties: BTreeMap::from([
+                    ("tt".to_string(), json!(title)),
+                    ("ts".to_string(), json!([task_uuid])),
+                    ("ss".to_string(), json!(0)),
+                    ("ix".to_string(), json!(ix)),
+                    ("cd".to_string(), json!(1)),
+                    ("md".to_string(), json!(1)),
+                ]),
+            },
+        )
+    }
+
+    #[test]
+    fn mark_status_payloads() {
+        let done_store = build_store(vec![task(TASK_A, "Alpha", 0)]);
+        let (done_plan, _, errs) = build_mark_status_plan(
+            &MarkArgs {
+                task_ids: vec![IdentifierToken::from(TASK_A)],
+                done: true,
+                incomplete: false,
+                canceled: false,
+                check_ids: None,
+                uncheck_ids: None,
+                check_cancel_ids: None,
+            },
+            &done_store,
+            NOW,
+        );
+        assert!(errs.is_empty());
+        assert_eq!(
+            serde_json::to_value(done_plan.changes).expect("to value"),
+            json!({ TASK_A: {"t":1,"e":"Task6","p":{"ss":3,"sp":NOW,"md":NOW}} })
+        );
+
+        let incomplete_store = build_store(vec![task(TASK_A, "Alpha", 3)]);
+        let (incomplete_plan, _, _) = build_mark_status_plan(
+            &MarkArgs {
+                task_ids: vec![IdentifierToken::from(TASK_A)],
+                done: false,
+                incomplete: true,
+                canceled: false,
+                check_ids: None,
+                uncheck_ids: None,
+                check_cancel_ids: None,
+            },
+            &incomplete_store,
+            NOW,
+        );
+        assert_eq!(
+            serde_json::to_value(incomplete_plan.changes).expect("to value"),
+            json!({ TASK_A: {"t":1,"e":"Task6","p":{"ss":0,"sp":null,"md":NOW}} })
+        );
+    }
+
+    #[test]
+    fn mark_checklist_payloads() {
+        let store = build_store(vec![
+            task(TASK_A, "Task with checklist", 0),
+            checklist(CHECK_A, TASK_A, "One", 1),
+            checklist(CHECK_B, TASK_A, "Two", 2),
+        ]);
+        let task = store.get_task(TASK_A).expect("task");
+
+        let (checked_plan, _, _) = build_mark_checklist_plan(
+            &MarkArgs {
+                task_ids: vec![IdentifierToken::from(TASK_A)],
+                done: false,
+                incomplete: false,
+                canceled: false,
+                check_ids: Some(format!("{},{}", &CHECK_A[..6], &CHECK_B[..6])),
+                uncheck_ids: None,
+                check_cancel_ids: None,
+            },
+            &task,
+            &format!("{},{}", &CHECK_A[..6], &CHECK_B[..6]),
+            NOW,
+        )
+        .expect("checked plan");
+        assert_eq!(
+            serde_json::to_value(checked_plan.changes).expect("to value"),
+            json!({
+                CHECK_A: {"t":1,"e":"ChecklistItem3","p":{"ss":3,"sp":NOW,"md":NOW}},
+                CHECK_B: {"t":1,"e":"ChecklistItem3","p":{"ss":3,"sp":NOW,"md":NOW}}
+            })
+        );
+    }
+
+    #[test]
+    fn mark_recurring_rejection_cases() {
+        let store = build_store(vec![task_with_props(
+            TASK_A,
+            "Recurring template",
+            BTreeMap::from([("rr".to_string(), json!({"tp":0}))]),
+        )]);
+        let (plan, _, errs) = build_mark_status_plan(
+            &MarkArgs {
+                task_ids: vec![IdentifierToken::from(TASK_A)],
+                done: true,
+                incomplete: false,
+                canceled: false,
+                check_ids: None,
+                uncheck_ids: None,
+                check_cancel_ids: None,
+            },
+            &store,
+            NOW,
+        );
+        assert!(plan.changes.is_empty());
+        assert_eq!(
+            errs,
+            vec![
+                "Recurring template tasks are blocked for done (template progression bookkeeping is not implemented). (Recurring template)"
+            ]
+        );
+
+        let store = build_store(vec![task_with_props(
+            TASK_A,
+            "Recurring instance",
+            BTreeMap::from([("rt".to_string(), json!([TPL_A, TPL_B]))]),
+        )]);
+        let (_, _, errs) = build_mark_status_plan(
+            &MarkArgs {
+                task_ids: vec![IdentifierToken::from(TASK_A)],
+                done: true,
+                incomplete: false,
+                canceled: false,
+                check_ids: None,
+                uncheck_ids: None,
+                check_cancel_ids: None,
+            },
+            &store,
+            NOW,
+        );
+        assert_eq!(
+            errs,
+            vec!["Recurring instance has 2 template references; expected exactly 1. (Recurring instance)"]
+        );
     }
 }

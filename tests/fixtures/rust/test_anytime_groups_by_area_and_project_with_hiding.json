@@ -1,0 +1,192 @@
+{
+  "test_name": "test_anytime_groups_by_area_and_project_with_hiding",
+  "cli_args": "anytime",
+  "today_ts": 1774396800,
+  "journal": [
+    {
+      "A1111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Loose task",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 10,
+          "cd": 1,
+          "md": 1
+        }
+      }
+    },
+    {
+      "B1111111111111111111111": {
+        "t": 0,
+        "e": "Area3",
+        "p": {
+          "tt": "Home",
+          "ix": 1
+        }
+      }
+    },
+    {
+      "C1111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Renovation",
+          "tp": 1,
+          "ss": 0,
+          "st": 1,
+          "ix": 15,
+          "cd": 1,
+          "md": 1,
+          "ar": [
+            "B1111111111111111111111"
+          ]
+        }
+      }
+    },
+    {
+      "P1111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Errands",
+          "tp": 1,
+          "ss": 0,
+          "st": 1,
+          "ix": 17,
+          "cd": 1,
+          "md": 1
+        }
+      }
+    },
+    {
+      "D1111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Area task",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 20,
+          "cd": 1,
+          "md": 1,
+          "ar": [
+            "B1111111111111111111111"
+          ]
+        }
+      }
+    },
+    {
+      "I1111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Project-only task 1",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 25,
+          "cd": 1,
+          "md": 1,
+          "pr": [
+            "P1111111111111111111111"
+          ]
+        }
+      }
+    },
+    {
+      "J1111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Project-only task 2",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 26,
+          "cd": 1,
+          "md": 1,
+          "pr": [
+            "P1111111111111111111111"
+          ]
+        }
+      }
+    },
+    {
+      "E1111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Project task 1",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 30,
+          "cd": 1,
+          "md": 1,
+          "pr": [
+            "C1111111111111111111111"
+          ]
+        }
+      }
+    },
+    {
+      "F1111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Project task 2",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 40,
+          "cd": 1,
+          "md": 1,
+          "pr": [
+            "C1111111111111111111111"
+          ]
+        }
+      }
+    },
+    {
+      "G1111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Project task 3",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 50,
+          "cd": 1,
+          "md": 1,
+          "pr": [
+            "C1111111111111111111111"
+          ]
+        }
+      }
+    },
+    {
+      "H1111111111111111111111": {
+        "t": 0,
+        "e": "Task6",
+        "p": {
+          "tt": "Project task 4 (hidden)",
+          "tp": 0,
+          "ss": 0,
+          "st": 1,
+          "ix": 60,
+          "cd": 1,
+          "md": 1,
+          "pr": [
+            "C1111111111111111111111"
+          ]
+        }
+      }
+    }
+  ],
+  "expected_output": "◌ Anytime  (8 tasks)\n\n  A ▢ Loose task\n\n  P ● Errands\n    I ▢ Project-only task 1\n    J ▢ Project-only task 2\n\n  B ◆ Home\n    D ▢ Area task\n    C ● Renovation\n      E ▢ Project task 1\n      F ▢ Project task 2\n      G ▢ Project task 3\n      Hiding 1 more\n"
+}

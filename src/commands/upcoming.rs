@@ -1,8 +1,6 @@
 use crate::app::Cli;
 use crate::commands::{Command, DetailedArgs};
-use crate::common::{
-    BOLD, CYAN, DIM, ICONS, colored, fmt_date, fmt_task_line, fmt_task_with_note, today_utc,
-};
+use crate::common::{colored, fmt_date, fmt_task_line, fmt_task_with_note, BOLD, CYAN, DIM, ICONS};
 use anyhow::Result;
 use clap::Args;
 use std::io::Write;
@@ -14,9 +12,15 @@ pub struct UpcomingArgs {
 }
 
 impl Command for UpcomingArgs {
-    fn run(&self, cli: &Cli, out: &mut dyn Write) -> Result<()> {
+    fn run_with_ctx(
+        &self,
+        cli: &Cli,
+        out: &mut dyn Write,
+        ctx: &mut dyn crate::cmd_ctx::CmdCtx,
+    ) -> Result<()> {
         let store = cli.load_store()?;
-        let now_ts = today_utc().timestamp();
+        let today = ctx.today();
+        let now_ts = today.timestamp();
 
         let mut tasks = Vec::new();
         for t in store.tasks(Some(crate::wire::TaskStatus::Incomplete), Some(false), None) {
@@ -71,7 +75,9 @@ impl Command for UpcomingArgs {
                 &store,
                 false,
                 true,
+                false,
                 Some(id_prefix_len),
+                &today,
                 cli.no_color,
             );
             writeln!(

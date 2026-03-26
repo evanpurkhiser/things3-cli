@@ -1,0 +1,15 @@
+◌ Anytime  (8 tasks)
+
+  A ▢ Loose task
+
+  P ● Errands
+    I ▢ Project-only task 1
+    J ▢ Project-only task 2
+
+  B ◆ Home
+    D ▢ Area task
+    C ● Renovation
+      E ▢ Project task 1
+      F ▢ Project task 2
+      G ▢ Project task 3
+      Hiding 1 more

@@ -1,6 +1,6 @@
 use crate::app::Cli;
 use crate::commands::{Command, DetailedArgs};
-use crate::common::{BOLD, CYAN, DIM, ICONS, colored, fmt_task_line, fmt_task_with_note};
+use crate::common::{colored, fmt_tasks_grouped, BOLD, CYAN, DIM, ICONS};
 use anyhow::Result;
 use clap::Args;
 use std::io::Write;
@@ -12,9 +12,15 @@ pub struct AnytimeArgs {
 }
 
 impl Command for AnytimeArgs {
-    fn run(&self, cli: &Cli, out: &mut dyn Write) -> Result<()> {
+    fn run_with_ctx(
+        &self,
+        cli: &Cli,
+        out: &mut dyn Write,
+        ctx: &mut dyn crate::cmd_ctx::CmdCtx,
+    ) -> Result<()> {
         let store = cli.load_store()?;
-        let tasks = store.anytime();
+        let today = ctx.today();
+        let tasks = store.anytime(&today);
 
         if tasks.is_empty() {
             writeln!(
@@ -36,30 +42,19 @@ impl Command for AnytimeArgs {
         )?;
         writeln!(out)?;
 
-        let id_prefix_len =
-            store.unique_prefix_length(&tasks.iter().map(|t| t.uuid.clone()).collect::<Vec<_>>());
-        for task in tasks {
-            let line = fmt_task_line(
-                &task,
+        writeln!(
+            out,
+            "{}",
+            fmt_tasks_grouped(
+                &tasks,
                 &store,
-                false,
+                "  ",
                 true,
-                Some(id_prefix_len),
+                self.detailed.detailed,
+                &today,
                 cli.no_color,
-            );
-            writeln!(
-                out,
-                "{}",
-                fmt_task_with_note(
-                    line,
-                    &task,
-                    "  ",
-                    Some(id_prefix_len),
-                    self.detailed.detailed,
-                    cli.no_color,
-                )
-            )?;
-        }
+            )
+        )?;
         Ok(())
     }
 }

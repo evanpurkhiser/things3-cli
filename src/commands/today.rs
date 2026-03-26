@@ -1,8 +1,8 @@
 use crate::app::Cli;
 use crate::commands::{Command, DetailedArgs};
 use crate::common::{
-    BLUE, BOLD, DIM, ICONS, YELLOW, colored, fmt_project_with_note, fmt_task_line,
-    fmt_task_with_note,
+    colored, fmt_project_with_note, fmt_task_line, fmt_task_with_note, BLUE, BOLD, DIM, ICONS,
+    YELLOW,
 };
 use crate::wire::TaskStatus;
 use anyhow::Result;
@@ -16,9 +16,15 @@ pub struct TodayArgs {
 }
 
 impl Command for TodayArgs {
-    fn run(&self, cli: &Cli, out: &mut dyn Write) -> Result<()> {
+    fn run_with_ctx(
+        &self,
+        cli: &Cli,
+        out: &mut dyn Write,
+        ctx: &mut dyn crate::cmd_ctx::CmdCtx,
+    ) -> Result<()> {
         let store = cli.load_store()?;
-        let tasks = store.today();
+        let today = ctx.today();
+        let tasks = store.today(&today);
         let mut today_items: Vec<_> = store
             .tasks(Some(TaskStatus::Incomplete), Some(false), None)
             .into_iter()
@@ -26,7 +32,7 @@ impl Command for TodayArgs {
                 !t.is_heading()
                     && !t.title.trim().is_empty()
                     && t.entity == "Task6"
-                    && (t.is_today() || t.evening)
+                    && (t.is_today(&today) || t.evening)
             })
             .collect();
 
@@ -104,7 +110,9 @@ impl Command for TodayArgs {
                             "  ",
                             Some(id_prefix_len),
                             false,
+                            true,
                             self.detailed.detailed,
+                            &today,
                             cli.no_color,
                         )
                     )?;
@@ -114,7 +122,9 @@ impl Command for TodayArgs {
                         &store,
                         false,
                         false,
+                        true,
                         Some(id_prefix_len),
+                        &today,
                         cli.no_color,
                     );
                     writeln!(
@@ -157,7 +167,9 @@ impl Command for TodayArgs {
                             "  ",
                             Some(id_prefix_len),
                             false,
+                            true,
                             self.detailed.detailed,
+                            &today,
                             cli.no_color,
                         )
                     )?;
@@ -167,7 +179,9 @@ impl Command for TodayArgs {
                         &store,
                         false,
                         false,
+                        true,
                         Some(id_prefix_len),
+                        &today,
                         cli.no_color,
                     );
                     writeln!(

@@ -1,4 +1,5 @@
 use crate::app::Cli;
+use crate::arg_types::IdentifierToken;
 use crate::commands::{Command, DetailedArgs};
 use crate::common::{
     BOLD, CYAN, DIM, ICONS, colored, fmt_project_with_note, fmt_task_line, fmt_task_with_note,
@@ -32,6 +33,18 @@ impl MatchResult {
     }
 }
 
+fn matches_project_filter(filter: &IdentifierToken, project_uuid: &str, project_title_lower: &str) -> bool {
+    let token = filter.as_str();
+    let lowered = token.to_ascii_lowercase();
+    project_uuid.starts_with(token) || project_title_lower.contains(&lowered)
+}
+
+fn matches_area_filter(filter: &IdentifierToken, area_uuid: &str, area_title_lower: &str) -> bool {
+    let token = filter.as_str();
+    let lowered = token.to_ascii_lowercase();
+    area_uuid.starts_with(token) || area_title_lower.contains(&lowered)
+}
+
 #[derive(Debug, Default, Args)]
 #[command(group(ArgGroup::new("status").args(["incomplete", "completed", "canceled", "any_status"]).multiple(false)))]
 #[command(group(ArgGroup::new("deadline_presence").args(["has_deadline", "no_deadline"]).multiple(false)))]
@@ -52,11 +65,11 @@ pub struct FindArgs {
     #[arg(long = "any-status")]
     pub any_status: bool,
     #[arg(long = "tag")]
-    pub tag_filters: Vec<String>,
+    tag_filters: Vec<IdentifierToken>,
     #[arg(long = "project")]
-    pub project_filters: Vec<String>,
+    project_filters: Vec<IdentifierToken>,
     #[arg(long = "area")]
-    pub area_filters: Vec<String>,
+    area_filters: Vec<IdentifierToken>,
     #[arg(long)]
     pub inbox: bool,
     #[arg(long)]
@@ -82,8 +95,14 @@ pub struct FindArgs {
 }
 
 impl Command for FindArgs {
-    fn run(&self, cli: &Cli, out: &mut dyn std::io::Write) -> Result<()> {
+    fn run_with_ctx(
+        &self,
+        cli: &Cli,
+        out: &mut dyn std::io::Write,
+        ctx: &mut dyn crate::cmd_ctx::CmdCtx,
+    ) -> Result<()> {
         let store = cli.load_store()?;
+        let today = ctx.today();
 
         for (flag, exprs) in [
             ("--deadline", &self.deadline),
@@ -92,7 +111,7 @@ impl Command for FindArgs {
             ("--completed-on", &self.completed_on),
         ] {
             for expr in exprs {
-                if let Err(err) = parse_date_expr(expr, flag) {
+                if let Err(err) = parse_date_expr(expr, flag, &today) {
                     eprintln!("{err}");
                     return Ok(());
                 }
@@ -101,7 +120,7 @@ impl Command for FindArgs {
 
         let mut resolved_tag_uuids = Vec::new();
         for tag_filter in &self.tag_filters {
-            let (tag, err) = resolve_single_tag(&store, tag_filter);
+            let (tag, err) = resolve_single_tag(&store, tag_filter.as_str());
             if !err.is_empty() {
                 eprintln!("{err}");
                 return Ok(());
@@ -115,7 +134,7 @@ impl Command for FindArgs {
             .tasks_by_uuid
             .values()
             .filter_map(|task| {
-                let result = matches(task, &store, self, &resolved_tag_uuids);
+                let result = matches(task, &store, self, &resolved_tag_uuids, &today);
                 if result.matched {
                     Some((task.clone(), result))
                 } else {
@@ -162,7 +181,7 @@ impl Command for FindArgs {
             writeln!(
                 out,
                 "{}",
-                fmt_result(&task, &store, id_prefix_len, force_detailed, cli.no_color,)
+                fmt_result(&task, &store, id_prefix_len, force_detailed, &today, cli.no_color,)
             )?;
         }
 
@@ -170,17 +189,12 @@ impl Command for FindArgs {
     }
 }
 
-fn today_utc_midnight() -> DateTime<Utc> {
-    crate::common::today_utc()
-}
-
-fn parse_date_value(value: &str, flag: &str) -> Result<DateTime<Utc>, String> {
+fn parse_date_value(value: &str, flag: &str, today: &DateTime<Utc>) -> Result<DateTime<Utc>, String> {
     let lowered = value.trim().to_ascii_lowercase();
-    let today = today_utc_midnight();
     match lowered.as_str() {
-        "today" => Ok(today),
-        "tomorrow" => Ok(today + Duration::days(1)),
-        "yesterday" => Ok(today - Duration::days(1)),
+        "today" => Ok(*today),
+        "tomorrow" => Ok(*today + Duration::days(1)),
+        "yesterday" => Ok(*today - Duration::days(1)),
         _ => {
             let parsed = NaiveDate::parse_from_str(&lowered, "%Y-%m-%d").map_err(|_| {
                 format!(
@@ -197,7 +211,7 @@ fn parse_date_value(value: &str, flag: &str) -> Result<DateTime<Utc>, String> {
     }
 }
 
-fn parse_date_expr(raw: &str, flag: &str) -> Result<(&'static str, DateTime<Utc>), String> {
+fn parse_date_expr(raw: &str, flag: &str, today: &DateTime<Utc>) -> Result<(&'static str, DateTime<Utc>), String> {
     let value = raw.trim();
     let (op, date_part) = if let Some(rest) = value.strip_prefix(">=") {
         (">=", rest)
@@ -214,7 +228,7 @@ fn parse_date_expr(raw: &str, flag: &str) -> Result<(&'static str, DateTime<Utc>
             "Invalid date expression for {flag}: {raw:?}. Expected an operator prefix: >, <, >=, <=, or =  (e.g. '<=2026-03-31')"
         ));
     };
-    let date = parse_date_value(date_part, flag)?;
+    let date = parse_date_value(date_part, flag, today)?;
     Ok((op, date))
 }
 
@@ -276,6 +290,7 @@ fn matches(
     store: &ThingsStore,
     args: &FindArgs,
     resolved_tag_uuids: &[String],
+    today: &DateTime<Utc>,
 ) -> MatchResult {
     if task.is_heading() || task.trashed || task.entity != "Task6" {
         return MatchResult::no();
@@ -326,10 +341,10 @@ fn matches(
         };
 
         let project_title = project.title.to_ascii_lowercase();
-        let matched = args.project_filters.iter().any(|f| {
-            let lowered = f.to_ascii_lowercase();
-            project_title.contains(&lowered) || project_uuid.starts_with(f)
-        });
+        let matched = args
+            .project_filters
+            .iter()
+            .any(|f| matches_project_filter(f, &project_uuid, &project_title));
         if !matched {
             return MatchResult::no();
         }
@@ -344,10 +359,10 @@ fn matches(
         };
 
         let area_title = area.title.to_ascii_lowercase();
-        let matched = args.area_filters.iter().any(|f| {
-            let lowered = f.to_ascii_lowercase();
-            area_title.contains(&lowered) || area_uuid.starts_with(f)
-        });
+        let matched = args
+            .area_filters
+            .iter()
+            .any(|f| matches_area_filter(f, &area_uuid, &area_title));
         if !matched {
             return MatchResult::no();
         }
@@ -356,7 +371,7 @@ fn matches(
     if args.inbox && task.start != TaskStart::Inbox {
         return MatchResult::no();
     }
-    if args.today && !task.is_today() {
+    if args.today && !task.is_today(today) {
         return MatchResult::no();
     }
     if args.someday && !task.in_someday() {
@@ -376,7 +391,7 @@ fn matches(
     }
 
     for expr in &args.deadline {
-        let Ok((op, threshold)) = parse_date_expr(expr, "--deadline") else {
+        let Ok((op, threshold)) = parse_date_expr(expr, "--deadline", today) else {
             return MatchResult::no();
         };
         if !date_matches(task.deadline, op, threshold) {
@@ -384,7 +399,7 @@ fn matches(
         }
     }
     for expr in &args.scheduled {
-        let Ok((op, threshold)) = parse_date_expr(expr, "--scheduled") else {
+        let Ok((op, threshold)) = parse_date_expr(expr, "--scheduled", today) else {
             return MatchResult::no();
         };
         if !date_matches(task.start_date, op, threshold) {
@@ -392,7 +407,7 @@ fn matches(
         }
     }
     for expr in &args.created {
-        let Ok((op, threshold)) = parse_date_expr(expr, "--created") else {
+        let Ok((op, threshold)) = parse_date_expr(expr, "--created", today) else {
             return MatchResult::no();
         };
         if !date_matches(task.creation_date, op, threshold) {
@@ -400,7 +415,7 @@ fn matches(
         }
     }
     for expr in &args.completed_on {
-        let Ok((op, threshold)) = parse_date_expr(expr, "--completed-on") else {
+        let Ok((op, threshold)) = parse_date_expr(expr, "--completed-on", today) else {
             return MatchResult::no();
         };
         if !date_matches(task.stop_date, op, threshold) {
@@ -420,6 +435,7 @@ fn fmt_result(
     store: &ThingsStore,
     id_prefix_len: usize,
     detailed: bool,
+    today: &DateTime<Utc>,
     no_color: bool,
 ) -> String {
     if task.is_project() {
@@ -429,11 +445,22 @@ fn fmt_result(
             "  ",
             Some(id_prefix_len),
             true,
+            false,
             detailed,
+            today,
             no_color,
         );
     }
 
-    let line = fmt_task_line(task, store, true, true, Some(id_prefix_len), no_color);
+    let line = fmt_task_line(
+        task,
+        store,
+        true,
+        true,
+        false,
+        Some(id_prefix_len),
+        today,
+        no_color,
+    );
     fmt_task_with_note(line, task, "  ", Some(id_prefix_len), detailed, no_color)
 }

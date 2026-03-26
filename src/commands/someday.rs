@@ -1,7 +1,7 @@
 use crate::app::Cli;
 use crate::commands::{Command, DetailedArgs};
 use crate::common::{
-    BOLD, CYAN, DIM, ICONS, colored, fmt_project_with_note, fmt_task_line, fmt_task_with_note,
+    colored, fmt_project_with_note, fmt_task_line, fmt_task_with_note, BOLD, CYAN, DIM, ICONS,
 };
 use anyhow::Result;
 use clap::Args;
@@ -14,8 +14,14 @@ pub struct SomedayArgs {
 }
 
 impl Command for SomedayArgs {
-    fn run(&self, cli: &Cli, out: &mut dyn Write) -> Result<()> {
+    fn run_with_ctx(
+        &self,
+        cli: &Cli,
+        out: &mut dyn Write,
+        ctx: &mut dyn crate::cmd_ctx::CmdCtx,
+    ) -> Result<()> {
         let store = cli.load_store()?;
+        let today = ctx.today();
         let items = store.someday();
 
         if items.is_empty() {
@@ -61,7 +67,9 @@ impl Command for SomedayArgs {
                     "  ",
                     Some(id_prefix_len),
                     true,
+                    false,
                     self.detailed.detailed,
+                    &today,
                     cli.no_color,
                 )
             )?;
@@ -84,7 +92,9 @@ impl Command for SomedayArgs {
                 &store,
                 false,
                 false,
+                false,
                 Some(id_prefix_len),
+                &today,
                 cli.no_color,
             );
             writeln!(

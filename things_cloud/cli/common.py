@@ -65,6 +65,7 @@ class _Icons:
     # Time-of-day markers
     evening: str = "☽"
     today: str = "⭑"
+    today_staged: str = "●"
 
     # Entity icons
     project: str = "●"
@@ -188,6 +189,7 @@ def fmt_task_line(
     store: ThingsStore,
     show_project: bool = False,
     show_today_markers: bool = False,
+    show_staged_today_marker: bool = False,
     id_prefix_len: Optional[int] = None,
 ) -> str:
     """Format a single task for terminal output."""
@@ -202,6 +204,8 @@ def fmt_task_line(
             parts.append(colored(ICONS.evening, BLUE))
         elif task.is_today:
             parts.append(colored(ICONS.today, YELLOW))
+    elif show_staged_today_marker and task.is_staged_for_today:
+        parts.append(colored(ICONS.today_staged, YELLOW))
 
     # Title
     title = task.title or colored("(untitled)", DIM)
@@ -232,6 +236,7 @@ def fmt_project_line(
     project: Task,
     store: ThingsStore,
     show_indicators: bool = True,
+    show_staged_today_marker: bool = False,
     id_prefix_len: Optional[int] = None,
 ) -> str:
     """Format a single project for terminal output."""
@@ -264,6 +269,8 @@ def fmt_project_line(
             status_marker = f" {colored(ICONS.evening, BLUE)}"
         elif project.is_today:
             status_marker = f" {colored(ICONS.today, YELLOW)}"
+    elif show_staged_today_marker and project.is_staged_for_today:
+        status_marker = f" {colored(ICONS.today_staged, YELLOW)}"
 
     id_part = f"{_id_prefix(project.uuid, id_prefix_len)} " if id_prefix_len else ""
     return f"{id_part}{colored(marker, DIM)}{status_marker} {title}{dl}"

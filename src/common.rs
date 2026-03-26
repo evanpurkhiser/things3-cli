@@ -1,30 +1,19 @@
 use crate::store::{ChecklistItem, Tag, Task, ThingsStore};
 use crate::wire::TaskStart;
-use chrono::{DateTime, Local, NaiveDate, TimeZone, Utc};
+use chrono::{DateTime, FixedOffset, Local, NaiveDate, TimeZone, Utc};
 use crc32fast::Hasher;
 use serde_json::{Value, json};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 /// Return today as a UTC midnight `DateTime<Utc>`.
-///
-/// If the `THINGS3_TODAY` environment variable is set to a Unix timestamp
-/// (integer seconds), that value is used instead of the system clock.
-/// This allows deterministic tests without any real-time dependency.
 pub fn today_utc() -> DateTime<Utc> {
-    if let Ok(val) = std::env::var("THINGS3_TODAY")
-        && let Ok(ts) = val.trim().parse::<i64>()
-    {
-        return Utc
-            .timestamp_opt(ts, 0)
-            .single()
-            .unwrap_or_else(Utc::now)
-            .date_naive()
-            .and_hms_opt(0, 0, 0)
-            .map(|d| Utc.from_utc_datetime(&d))
-            .unwrap_or_else(Utc::now);
-    }
     let today = Utc::now().date_naive().and_hms_opt(0, 0, 0).unwrap();
     Utc.from_utc_datetime(&today)
+}
+
+/// Return current wall-clock unix timestamp in seconds (fractional).
+pub fn now_ts_f64() -> f64 {
+    Utc::now().timestamp_millis() as f64 / 1000.0
 }
 
 pub const RESET: &str = "\x1b[0m";
@@ -45,6 +34,7 @@ pub struct Icons {
     pub task_canceled: &'static str,
     pub evening: &'static str,
     pub today: &'static str,
+    pub today_staged: &'static str,
     pub project: &'static str,
     pub area: &'static str,
     pub tag: &'static str,
@@ -75,6 +65,7 @@ pub const ICONS: Icons = Icons {
     task_canceled: "☒",
     evening: "☽",
     today: "⭑",
+    today_staged: "●",
     project: "●",
     area: "◆",
     tag: "⌗",
@@ -117,16 +108,25 @@ pub fn fmt_date(dt: Option<DateTime<Utc>>) -> String {
 }
 
 pub fn fmt_date_local(dt: Option<DateTime<Utc>>) -> String {
-    dt.map(|d| d.with_timezone(&Local).format("%Y-%m-%d").to_string())
+    let fixed_local = fixed_local_offset();
+    dt.map(|d| {
+        d.with_timezone(&fixed_local)
+            .format("%Y-%m-%d")
+            .to_string()
+    })
         .unwrap_or_default()
 }
 
-pub fn fmt_deadline(deadline: Option<DateTime<Utc>>, no_color: bool) -> String {
+fn fixed_local_offset() -> FixedOffset {
+    let seconds = Local::now().offset().local_minus_utc();
+    FixedOffset::east_opt(seconds).unwrap_or_else(|| FixedOffset::east_opt(0).expect("UTC offset"))
+}
+
+pub fn fmt_deadline(deadline: Option<DateTime<Utc>>, today: &DateTime<Utc>, no_color: bool) -> String {
     let Some(deadline) = deadline else {
         return String::new();
     };
-    let now = today_utc();
-    let color = if deadline < now { RED } else { YELLOW };
+    let color = if deadline < *today { RED } else { YELLOW };
     format!(
         " {} due by {}",
         ICONS.deadline,
@@ -159,7 +159,9 @@ pub fn fmt_task_line(
     store: &ThingsStore,
     show_project: bool,
     show_today_markers: bool,
+    show_staged_today_marker: bool,
     id_prefix_len: Option<usize>,
+    today: &DateTime<Utc>,
     no_color: bool,
 ) -> String {
     let mut parts: Vec<String> = Vec::new();
@@ -170,9 +172,11 @@ pub fn fmt_task_line(
     if show_today_markers {
         if task.evening {
             parts.push(colored(ICONS.evening, &[BLUE], no_color));
-        } else if task.is_today() {
+        } else if task.is_today(today) {
             parts.push(colored(ICONS.today, &[YELLOW], no_color));
         }
+    } else if show_staged_today_marker && task.is_staged_for_today(today) {
+        parts.push(colored(ICONS.today_staged, &[YELLOW], no_color));
     }
 
     let title = if task.title.is_empty() {
@@ -207,7 +211,7 @@ pub fn fmt_task_line(
     }
 
     if task.deadline.is_some() {
-        parts.push(fmt_deadline(task.deadline, no_color));
+        parts.push(fmt_deadline(task.deadline, today, no_color));
     }
 
     let line = parts.join(" ");
@@ -223,7 +227,9 @@ pub fn fmt_project_line(
     project: &Task,
     store: &ThingsStore,
     show_indicators: bool,
+    show_staged_today_marker: bool,
     id_prefix_len: Option<usize>,
+    today: &DateTime<Utc>,
     no_color: bool,
 ) -> String {
     let title = if project.title.is_empty() {
@@ -231,7 +237,7 @@ pub fn fmt_project_line(
     } else {
         project.title.clone()
     };
-    let dl = fmt_deadline(project.deadline, no_color);
+    let dl = fmt_deadline(project.deadline, today, no_color);
 
     let marker = if project.in_someday() {
         ICONS.anytime
@@ -259,9 +265,11 @@ pub fn fmt_project_line(
     if show_indicators {
         if project.evening {
             status_marker = format!(" {}", colored(ICONS.evening, &[BLUE], no_color));
-        } else if project.is_today() {
+        } else if project.is_today(today) {
             status_marker = format!(" {}", colored(ICONS.today, &[YELLOW], no_color));
         }
+    } else if show_staged_today_marker && project.is_staged_for_today(today) {
+        status_marker = format!(" {}", colored(ICONS.today_staged, &[YELLOW], no_color));
     }
 
     let id_part = if let Some(len) = id_prefix_len {
@@ -404,16 +412,27 @@ pub fn fmt_task_with_note(
     out.join("\n")
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn fmt_project_with_note(
     project: &Task,
     store: &ThingsStore,
     indent: &str,
     id_prefix_len: Option<usize>,
     show_indicators: bool,
+    show_staged_today_marker: bool,
     detailed: bool,
+    today: &DateTime<Utc>,
     no_color: bool,
 ) -> String {
-    let line = fmt_project_line(project, store, show_indicators, id_prefix_len, no_color);
+    let line = fmt_project_line(
+        project,
+        store,
+        show_indicators,
+        show_staged_today_marker,
+        id_prefix_len,
+        today,
+        no_color,
+    );
     let mut out = vec![format!("{}{}", indent, line)];
 
     if detailed
@@ -444,15 +463,216 @@ pub fn fmt_project_with_note(
     out.join("\n")
 }
 
+#[derive(Default)]
+struct AreaTaskGroup<'a> {
+    tasks: Vec<&'a Task>,
+    projects: Vec<(String, Vec<&'a Task>)>,
+    project_pos: HashMap<String, usize>,
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn fmt_tasks_grouped(
+    tasks: &[Task],
+    store: &ThingsStore,
+    indent: &str,
+    show_today_markers: bool,
+    detailed: bool,
+    today: &DateTime<Utc>,
+    no_color: bool,
+) -> String {
+    if tasks.is_empty() {
+        return String::new();
+    }
+
+    const MAX_GROUP_ITEMS: usize = 3;
+
+    let mut unscoped: Vec<&Task> = Vec::new();
+
+    let mut project_only: Vec<(String, Vec<&Task>)> = Vec::new();
+    let mut project_only_pos: HashMap<String, usize> = HashMap::new();
+
+    let mut by_area: Vec<(String, AreaTaskGroup<'_>)> = Vec::new();
+    let mut by_area_pos: HashMap<String, usize> = HashMap::new();
+
+    for task in tasks {
+        let project_uuid = store.effective_project_uuid(task);
+        let area_uuid = store.effective_area_uuid(task);
+
+        match (project_uuid, area_uuid) {
+            (Some(project_uuid), Some(area_uuid)) => {
+                let area_idx = if let Some(i) = by_area_pos.get(&area_uuid).copied() {
+                    i
+                } else {
+                    let i = by_area.len();
+                    by_area.push((area_uuid.clone(), AreaTaskGroup::default()));
+                    by_area_pos.insert(area_uuid.clone(), i);
+                    i
+                };
+                let area_group = &mut by_area[area_idx].1;
+
+                let project_idx = if let Some(i) = area_group.project_pos.get(&project_uuid).copied() {
+                    i
+                } else {
+                    let i = area_group.projects.len();
+                    area_group.projects.push((project_uuid.clone(), Vec::new()));
+                    area_group.project_pos.insert(project_uuid.clone(), i);
+                    i
+                };
+                area_group.projects[project_idx].1.push(task);
+            }
+            (Some(project_uuid), None) => {
+                let project_idx = if let Some(i) = project_only_pos.get(&project_uuid).copied() {
+                    i
+                } else {
+                    let i = project_only.len();
+                    project_only.push((project_uuid.clone(), Vec::new()));
+                    project_only_pos.insert(project_uuid.clone(), i);
+                    i
+                };
+                project_only[project_idx].1.push(task);
+            }
+            (None, Some(area_uuid)) => {
+                let area_idx = if let Some(i) = by_area_pos.get(&area_uuid).copied() {
+                    i
+                } else {
+                    let i = by_area.len();
+                    by_area.push((area_uuid.clone(), AreaTaskGroup::default()));
+                    by_area_pos.insert(area_uuid.clone(), i);
+                    i
+                };
+                by_area[area_idx].1.tasks.push(task);
+            }
+            (None, None) => {
+                unscoped.push(task);
+            }
+        }
+    }
+
+    let mut ids: Vec<String> = tasks.iter().map(|t| t.uuid.clone()).collect();
+    for (project_uuid, _) in &project_only {
+        ids.push(project_uuid.clone());
+    }
+    for (area_uuid, area_group) in &by_area {
+        if !area_uuid.is_empty() {
+            ids.push(area_uuid.clone());
+        }
+        for (project_uuid, _) in &area_group.projects {
+            ids.push(project_uuid.clone());
+        }
+    }
+    let id_prefix_len = store.unique_prefix_length(&ids);
+
+    let mut sections: Vec<String> = Vec::new();
+
+    if !unscoped.is_empty() {
+        let mut lines: Vec<String> = Vec::new();
+        for task in unscoped {
+            let line = fmt_task_line(
+                task,
+                store,
+                false,
+                show_today_markers,
+                false,
+                Some(id_prefix_len),
+                today,
+                no_color,
+            );
+            lines.push(fmt_task_with_note(
+                line,
+                task,
+                indent,
+                Some(id_prefix_len),
+                detailed,
+                no_color,
+            ));
+        }
+        sections.push(lines.join("\n"));
+    }
+
+    let fmt_limited_tasks = |group_tasks: &[&Task], task_indent: &str| -> Vec<String> {
+        let mut lines: Vec<String> = Vec::new();
+        for task in group_tasks.iter().take(MAX_GROUP_ITEMS) {
+            let line = fmt_task_line(
+                task,
+                store,
+                false,
+                show_today_markers,
+                false,
+                Some(id_prefix_len),
+                today,
+                no_color,
+            );
+            lines.push(fmt_task_with_note(
+                line,
+                task,
+                task_indent,
+                Some(id_prefix_len),
+                detailed,
+                no_color,
+            ));
+        }
+        let hidden = group_tasks.len().saturating_sub(MAX_GROUP_ITEMS);
+        if hidden > 0 {
+            lines.push(colored(
+                &format!("{task_indent}Hiding {hidden} more"),
+                &[DIM],
+                no_color,
+            ));
+        }
+        lines
+    };
+
+    for (project_uuid, project_tasks) in &project_only {
+        let title = store.resolve_project_title(project_uuid);
+        let mut lines = vec![format!(
+            "{}{} {}",
+            indent,
+            id_prefix(project_uuid, id_prefix_len, no_color),
+            colored(&format!("{} {}", ICONS.project, title), &[BOLD], no_color)
+        )];
+        lines.extend(fmt_limited_tasks(project_tasks, &format!("{}  ", indent)));
+        sections.push(lines.join("\n"));
+    }
+
+    for (area_uuid, area_group) in &by_area {
+        let area_title = store.resolve_area_title(area_uuid);
+        let mut lines = vec![format!(
+            "{}{} {}",
+            indent,
+            id_prefix(area_uuid, id_prefix_len, no_color),
+            colored(&format!("{} {}", ICONS.area, area_title), &[BOLD], no_color)
+        )];
+
+        lines.extend(fmt_limited_tasks(&area_group.tasks, &format!("{}  ", indent)));
+
+        for (project_uuid, project_tasks) in &area_group.projects {
+            let project_title = store.resolve_project_title(project_uuid);
+            lines.push(format!(
+                "{}  {} {}",
+                indent,
+                id_prefix(project_uuid, id_prefix_len, no_color),
+                colored(&format!("{} {}", ICONS.project, project_title), &[BOLD], no_color)
+            ));
+            lines.extend(fmt_limited_tasks(project_tasks, &format!("{}    ", indent)));
+        }
+
+        sections.push(lines.join("\n"));
+    }
+
+    sections.join("\n\n")
+}
+
 pub fn parse_day(day: Option<&str>, label: &str) -> Result<Option<DateTime<Local>>, String> {
     let Some(day) = day else {
         return Ok(None);
     };
     let parsed = NaiveDate::parse_from_str(day, "%Y-%m-%d")
         .map_err(|_| format!("Invalid {label} date: {day} (expected YYYY-MM-DD)"))?;
+    let fixed_local = fixed_local_offset();
     let local_dt = parsed
         .and_hms_opt(0, 0, 0)
-        .and_then(|d| Local.from_local_datetime(&d).single())
+        .and_then(|d| fixed_local.from_local_datetime(&d).single())
+        .map(|d| d.with_timezone(&Local))
         .ok_or_else(|| format!("Invalid {label} date: {day} (expected YYYY-MM-DD)"))?;
     Ok(Some(local_dt))
 }
@@ -554,7 +774,10 @@ pub fn resolve_tag_ids(store: &ThingsStore, raw_tags: &str) -> (Vec<String>, Str
     (resolved, String::new())
 }
 
-pub fn is_today_from_props(task_props: &serde_json::Map<String, Value>) -> bool {
+pub fn is_today_from_props(
+    task_props: &serde_json::Map<String, Value>,
+    today_ts: i64,
+) -> bool {
     let st = task_props.get("st").and_then(Value::as_i64).unwrap_or(0);
     if st != i32::from(TaskStart::Anytime) as i64 {
         return false;
@@ -564,6 +787,6 @@ pub fn is_today_from_props(task_props: &serde_json::Map<String, Value>) -> bool 
         return false;
     };
 
-    let today_ts_local = today_utc().timestamp();
+    let today_ts_local = today_ts;
     sr <= today_ts_local
 }

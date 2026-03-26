@@ -1,16 +1,13 @@
 use crate::app::Cli;
-use crate::cloud_writer::{CloudWriter, LiveCloudWriter};
 use crate::commands::Command;
 use crate::common::{
     colored, day_to_timestamp, fmt_project_with_note, id_prefix, parse_day, resolve_tag_ids,
     task6_note, BOLD, DIM, GREEN, ICONS,
 };
-use crate::ids::random_task_id;
 use crate::wire::{
     EntityType, OperationType, TaskPatch, TaskStart, TaskStatus, TaskType, WireObject,
 };
 use anyhow::Result;
-use chrono::Utc;
 use clap::{Args, Subcommand};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
@@ -65,14 +62,6 @@ pub struct ProjectsEditArgs {
     pub add_tags: Option<String>,
     #[arg(long = "remove-tags")]
     pub remove_tags: Option<String>,
-}
-
-fn now_ts() -> f64 {
-    Utc::now().timestamp_millis() as f64 / 1000.0
-}
-
-fn today_ts() -> i64 {
-    crate::common::today_utc().timestamp()
 }
 
 #[derive(Debug, Clone)]
@@ -194,23 +183,26 @@ fn build_projects_edit_plan(
 }
 
 impl Command for ProjectsArgs {
-    fn run(&self, cli: &Cli, out: &mut dyn std::io::Write) -> Result<()> {
-        let default_list = ProjectsListArgs::default();
-        let (list_args, is_list) = match self.command.as_ref() {
-            Some(ProjectsSubcommand::List(la)) => (la, true),
-            None => (&default_list, true),
-            _ => (&default_list, false),
-        };
-        // Merge top-level --detailed into list args.
-        let effective_detailed = if is_list {
-            self.detailed || list_args.detailed
-        } else {
-            false
+    fn run_with_ctx(
+        &self,
+        cli: &Cli,
+        out: &mut dyn std::io::Write,
+        ctx: &mut dyn crate::cmd_ctx::CmdCtx,
+    ) -> Result<()> {
+        // Match Python argparse behavior:
+        // - `projects --detailed` (no subcommand) => detailed output
+        // - `projects list --detailed` => detailed output
+        // - `projects --detailed list` => not detailed (subcommand parser default wins)
+        let effective_detailed = match self.command.as_ref() {
+            None => self.detailed,
+            Some(ProjectsSubcommand::List(la)) => la.detailed,
+            _ => false,
         };
 
         match &self.command {
             None | Some(ProjectsSubcommand::List(_)) => {
                 let store = cli.load_store()?;
+                let today = ctx.today();
                 let projects = store.projects(Some(TaskStatus::Incomplete));
                 if projects.is_empty() {
                     writeln!(
@@ -253,7 +245,9 @@ impl Command for ProjectsArgs {
                                 "  ",
                                 Some(id_prefix_len),
                                 true,
+                                false,
                                 effective_detailed,
+                                &today,
                                 cli.no_color,
                             )
                         )?;
@@ -292,7 +286,9 @@ impl Command for ProjectsArgs {
                                 "    ",
                                 Some(id_prefix_len),
                                 true,
+                                false,
                                 effective_detailed,
+                                &today,
                                 cli.no_color,
                             )
                         )?;
@@ -307,7 +303,7 @@ impl Command for ProjectsArgs {
                 }
 
                 let store = cli.load_store()?;
-                let now = now_ts();
+                let now = ctx.now_timestamp();
                 let mut props: BTreeMap<String, Value> = BTreeMap::new();
                 props.insert("tt".to_string(), json!(title));
                 props.insert("tp".to_string(), json!(i32::from(TaskType::Project)));
@@ -347,7 +343,7 @@ impl Command for ProjectsArgs {
                         props.insert("st".to_string(), json!(2));
                         props.insert("sr".to_string(), Value::Null);
                     } else if when == "today" {
-                        let ts = today_ts();
+                        let ts = ctx.today_timestamp();
                         props.insert("st".to_string(), json!(1));
                         props.insert("sr".to_string(), json!(ts));
                         props.insert("tir".to_string(), json!(ts));
@@ -388,8 +384,7 @@ impl Command for ProjectsArgs {
                     props.insert("dd".to_string(), json!(day_to_timestamp(day)));
                 }
 
-                let uuid = random_task_id();
-                let mut writer = LiveCloudWriter::new()?;
+                let uuid = ctx.next_id();
 
                 let mut changes = BTreeMap::new();
                 changes.insert(
@@ -400,7 +395,7 @@ impl Command for ProjectsArgs {
                         properties: props,
                     },
                 );
-                if let Err(e) = writer.commit(changes, None) {
+                if let Err(e) = ctx.commit_changes(changes, None) {
                     eprintln!("Failed to create project: {e}");
                     return Ok(());
                 }
@@ -415,7 +410,7 @@ impl Command for ProjectsArgs {
             }
             Some(ProjectsSubcommand::Edit(args)) => {
                 let store = cli.load_store()?;
-                let plan = match build_projects_edit_plan(args, &store, now_ts()) {
+                let plan = match build_projects_edit_plan(args, &store, ctx.now_timestamp()) {
                     Ok(plan) => plan,
                     Err(err) => {
                         eprintln!("{err}");
@@ -423,7 +418,6 @@ impl Command for ProjectsArgs {
                     }
                 };
 
-                let mut writer = LiveCloudWriter::new()?;
                 let mut changes = BTreeMap::new();
                 changes.insert(
                     plan.project.uuid.clone(),
@@ -433,7 +427,7 @@ impl Command for ProjectsArgs {
                         properties: plan.update.clone().into_properties(),
                     },
                 );
-                if let Err(e) = writer.commit(changes, None) {
+                if let Err(e) = ctx.commit_changes(changes, None) {
                     eprintln!("Failed to edit project: {e}");
                     return Ok(());
                 }

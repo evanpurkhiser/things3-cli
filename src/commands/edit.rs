@@ -1,20 +1,18 @@
 use crate::app::Cli;
-use crate::cloud_writer::{CloudWriter, LiveCloudWriter};
+use crate::arg_types::IdentifierToken;
 use crate::commands::Command;
 use crate::common::{colored, resolve_tag_ids, task6_note, DIM, GREEN, ICONS};
-use crate::ids::random_task_id;
 use crate::wire::{
     ChecklistItemPatch, EntityType, OperationType, TaskPatch, TaskStart, WireObject,
 };
 use anyhow::Result;
-use chrono::Utc;
 use clap::Args;
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 #[derive(Debug, Args)]
 pub struct EditArgs {
-    pub task_ids: Vec<String>,
+    pub task_ids: Vec<IdentifierToken>,
     #[arg(long)]
     pub title: Option<String>,
     #[arg(long)]
@@ -31,10 +29,6 @@ pub struct EditArgs {
     pub remove_checklist: Option<String>,
     #[arg(long = "rename-checklist")]
     pub rename_checklist: Vec<String>,
-}
-
-fn now_ts() -> f64 {
-    Utc::now().timestamp_millis() as f64 / 1000.0
 }
 
 fn resolve_checklist_items(
@@ -85,10 +79,16 @@ struct EditPlan {
 }
 
 impl Command for EditArgs {
-    fn run(&self, cli: &Cli, out: &mut dyn std::io::Write) -> Result<()> {
+    fn run_with_ctx(
+        &self,
+        cli: &Cli,
+        out: &mut dyn std::io::Write,
+        ctx: &mut dyn crate::cmd_ctx::CmdCtx,
+    ) -> Result<()> {
         let store = cli.load_store()?;
-        let mut id_gen = || random_task_id();
-        let plan = match build_edit_plan(self, &store, now_ts(), &mut id_gen) {
+        let now = ctx.now_timestamp();
+        let mut id_gen = || ctx.next_id();
+        let plan = match build_edit_plan(self, &store, now, &mut id_gen) {
             Ok(plan) => plan,
             Err(err) => {
                 eprintln!("{err}");
@@ -96,8 +96,7 @@ impl Command for EditArgs {
             }
         };
 
-        let mut writer = LiveCloudWriter::new()?;
-        if let Err(e) = writer.commit(plan.changes.clone(), None) {
+        if let Err(e) = ctx.commit_changes(plan.changes.clone(), None) {
             eprintln!("Failed to edit item: {e}");
             return Ok(());
         }
@@ -151,7 +150,7 @@ fn build_edit_plan(
 
     let mut tasks = Vec::new();
     for identifier in &args.task_ids {
-        let (task_opt, err, _) = store.resolve_mark_identifier(identifier);
+        let (task_opt, err, _) = store.resolve_mark_identifier(identifier.as_str());
         let Some(task) = task_opt else {
             return Err(err);
         };
@@ -578,7 +577,7 @@ mod tests {
     fn edit_title_and_notes_payloads() {
         let store = build_store(vec![task(TASK_UUID, "Old title")]);
         let args = EditArgs {
-            task_ids: vec![TASK_UUID.to_string()],
+            task_ids: vec![IdentifierToken::from(TASK_UUID)],
             title: Some("New title".to_string()),
             notes: Some("new notes".to_string()),
             move_target: None,
@@ -607,7 +606,7 @@ mod tests {
         let mut id_gen = || "X".to_string();
         let inbox = build_edit_plan(
             &EditArgs {
-                task_ids: vec![TASK_UUID.to_string()],
+                task_ids: vec![IdentifierToken::from(TASK_UUID)],
                 title: None,
                 notes: None,
                 move_target: Some("inbox".to_string()),
@@ -629,7 +628,7 @@ mod tests {
 
         let clear = build_edit_plan(
             &EditArgs {
-                task_ids: vec![TASK_UUID.to_string()],
+                task_ids: vec![IdentifierToken::from(TASK_UUID)],
                 title: None,
                 notes: None,
                 move_target: Some("clear".to_string()),
@@ -649,7 +648,7 @@ mod tests {
 
         let project_move = build_edit_plan(
             &EditArgs {
-                task_ids: vec![TASK_UUID.to_string()],
+                task_ids: vec![IdentifierToken::from(TASK_UUID)],
                 title: None,
                 notes: None,
                 move_target: Some(PROJECT_UUID.to_string()),
@@ -680,7 +679,7 @@ mod tests {
         let mut id_gen = || "X".to_string();
         let plan = build_edit_plan(
             &EditArgs {
-                task_ids: vec![TASK_UUID.to_string(), TASK_UUID2.to_string()],
+                task_ids: vec![IdentifierToken::from(TASK_UUID), IdentifierToken::from(TASK_UUID2)],
                 title: None,
                 notes: None,
                 move_target: Some(PROJECT_UUID.to_string()),
@@ -699,7 +698,7 @@ mod tests {
 
         let err = build_edit_plan(
             &EditArgs {
-                task_ids: vec![TASK_UUID.to_string(), TASK_UUID2.to_string()],
+                task_ids: vec![IdentifierToken::from(TASK_UUID), IdentifierToken::from(TASK_UUID2)],
                 title: Some("New".to_string()),
                 notes: None,
                 move_target: None,
@@ -734,7 +733,7 @@ mod tests {
         let mut id_gen = || "X".to_string();
         let plan = build_edit_plan(
             &EditArgs {
-                task_ids: vec![TASK_UUID.to_string()],
+                task_ids: vec![IdentifierToken::from(TASK_UUID)],
                 title: None,
                 notes: None,
                 move_target: None,
@@ -766,7 +765,7 @@ mod tests {
         let mut id_gen = || ids.next().expect("next id");
         let plan = build_edit_plan(
             &EditArgs {
-                task_ids: vec![TASK_UUID.to_string()],
+                task_ids: vec![IdentifierToken::from(TASK_UUID)],
                 title: None,
                 notes: None,
                 move_target: None,
@@ -800,7 +799,7 @@ mod tests {
         let mut id_gen = || "X".to_string();
         let err = build_edit_plan(
             &EditArgs {
-                task_ids: vec![TASK_UUID.to_string()],
+                task_ids: vec![IdentifierToken::from(TASK_UUID)],
                 title: None,
                 notes: None,
                 move_target: None,
@@ -820,7 +819,7 @@ mod tests {
         let store = build_store(vec![task(TASK_UUID, "A"), project(PROJECT_UUID, "Roadmap")]);
         let err = build_edit_plan(
             &EditArgs {
-                task_ids: vec![PROJECT_UUID.to_string()],
+                task_ids: vec![IdentifierToken::from(PROJECT_UUID)],
                 title: Some("New".to_string()),
                 notes: None,
                 move_target: None,
@@ -840,7 +839,7 @@ mod tests {
         let store = build_store(vec![task(TASK_UUID, "Movable"), task(PROJECT_UUID, "Not a project")]);
         let err = build_edit_plan(
             &EditArgs {
-                task_ids: vec![TASK_UUID.to_string()],
+                task_ids: vec![IdentifierToken::from(TASK_UUID)],
                 title: None,
                 notes: None,
                 move_target: Some(PROJECT_UUID.to_string()),
@@ -873,7 +872,7 @@ mod tests {
         let mut id_gen = || "X".to_string();
         let err = build_edit_plan(
             &EditArgs {
-                task_ids: vec![TASK_UUID.to_string()],
+                task_ids: vec![IdentifierToken::from(TASK_UUID)],
                 title: None,
                 notes: None,
                 move_target: Some("ABCD1234".to_string()),
@@ -901,7 +900,7 @@ mod tests {
 
         let err = build_edit_plan(
             &EditArgs {
-                task_ids: vec![TASK_UUID.to_string(), TASK_UUID2.to_string()],
+                task_ids: vec![IdentifierToken::from(TASK_UUID), IdentifierToken::from(TASK_UUID2)],
                 title: None,
                 notes: None,
                 move_target: None,
@@ -924,7 +923,7 @@ mod tests {
         let store = build_store(vec![task(TASK_UUID, "A")]);
         let err = build_edit_plan(
             &EditArgs {
-                task_ids: vec![TASK_UUID.to_string()],
+                task_ids: vec![IdentifierToken::from(TASK_UUID)],
                 title: Some("   ".to_string()),
                 notes: None,
                 move_target: None,

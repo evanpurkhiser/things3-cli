@@ -1,6 +1,6 @@
 use crate::app::Cli;
 use crate::commands::{Command, DetailedArgs};
-use crate::common::{BLUE, BOLD, DIM, ICONS, colored, fmt_task_line, fmt_task_with_note};
+use crate::common::{colored, fmt_task_line, fmt_task_with_note, BLUE, BOLD, DIM, ICONS};
 use anyhow::Result;
 use clap::Args;
 
@@ -11,8 +11,14 @@ pub struct InboxArgs {
 }
 
 impl Command for InboxArgs {
-    fn run(&self, cli: &Cli, out: &mut dyn std::io::Write) -> Result<()> {
+    fn run_with_ctx(
+        &self,
+        cli: &Cli,
+        out: &mut dyn std::io::Write,
+        ctx: &mut dyn crate::cmd_ctx::CmdCtx,
+    ) -> Result<()> {
         let store = cli.load_store()?;
+        let today = ctx.today();
         let tasks = store.inbox();
 
         if tasks.is_empty() {
@@ -39,7 +45,9 @@ impl Command for InboxArgs {
                 &store,
                 false,
                 true,
+                false,
                 Some(id_prefix_len),
+                &today,
                 cli.no_color,
             );
             writeln!(

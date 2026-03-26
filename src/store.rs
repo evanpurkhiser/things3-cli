@@ -1,10 +1,9 @@
-use crate::common::today_utc;
 use crate::things_id::ThingsId;
 use crate::wire::{
     EntityType, OperationType, RecurrenceRule, TaskStart, TaskStatus, TaskType, WireItem,
     WireObject,
 };
-use chrono::{DateTime, Local, TimeZone, Utc};
+use chrono::{DateTime, FixedOffset, Local, TimeZone, Utc};
 use serde_json::{Map, Value};
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -122,15 +121,21 @@ impl Task {
         self.start == TaskStart::Someday && self.start_date.is_none()
     }
 
-    pub fn is_today(&self) -> bool {
+    pub fn is_today(&self, today: &DateTime<Utc>) -> bool {
         let Some(start_date) = self.start_date else {
             return false;
         };
-        if self.start != TaskStart::Anytime {
+        if self.start != TaskStart::Anytime && self.start != TaskStart::Someday {
             return false;
         }
-        let today_dt = today_utc();
-        start_date <= today_dt
+        start_date <= *today
+    }
+
+    pub fn is_staged_for_today(&self, today: &DateTime<Utc>) -> bool {
+        let Some(start_date) = self.start_date else {
+            return false;
+        };
+        self.start == TaskStart::Someday && start_date <= *today
     }
 
     pub fn is_recurrence_template(&self) -> bool {
@@ -158,7 +163,18 @@ pub struct ThingsStore {
 
 fn ts_to_dt(ts: Option<f64>) -> Option<DateTime<Utc>> {
     let ts = ts?;
-    Utc.timestamp_opt(ts as i64, 0).single()
+    let mut secs = ts.floor() as i64;
+    let mut nanos = ((ts - secs as f64) * 1_000_000_000_f64).round() as u32;
+    if nanos >= 1_000_000_000 {
+        secs += 1;
+        nanos = 0;
+    }
+    Utc.timestamp_opt(secs, nanos).single()
+}
+
+fn fixed_local_offset() -> FixedOffset {
+    let seconds = Local::now().offset().local_minus_utc();
+    FixedOffset::east_opt(seconds).unwrap_or_else(|| FixedOffset::east_opt(0).expect("UTC offset"))
 }
 
 fn parse_i32(map: &Map<String, Value>, key: &str, default: i32) -> i32 {
@@ -202,7 +218,8 @@ fn parse_notes(value: Option<&Value>) -> Option<String> {
 
     match value {
         Value::String(s) => {
-            let trimmed = s.trim();
+            let normalized = s.replace('\u{2028}', "\n").replace('\u{2029}', "\n");
+            let trimmed = normalized.trim();
             if trimmed.is_empty() {
                 None
             } else {
@@ -215,7 +232,7 @@ fn parse_notes(value: Option<&Value>) -> Option<String> {
                 Some(1) => obj
                     .get("v")
                     .and_then(Value::as_str)
-                    .map(ToString::to_string)
+                    .map(|s| s.replace('\u{2028}', "\n").replace('\u{2029}', "\n"))
                     .and_then(|s| {
                         let trimmed = s.trim().to_string();
                         if trimmed.is_empty() {
@@ -618,7 +635,7 @@ impl ThingsStore {
         out
     }
 
-    pub fn today(&self) -> Vec<Task> {
+    pub fn today(&self, today: &DateTime<Utc>) -> Vec<Task> {
         let mut out: Vec<Task> = self
             .tasks_by_uuid
             .values()
@@ -629,7 +646,7 @@ impl ThingsStore {
                     && !t.is_project()
                     && !t.title.trim().is_empty()
                     && t.entity == "Task6"
-                    && t.is_today()
+                    && t.is_today(today)
             })
             .cloned()
             .collect();
@@ -667,9 +684,7 @@ impl ThingsStore {
         out
     }
 
-    pub fn anytime(&self) -> Vec<Task> {
-        let today_utc = today_utc();
-
+    pub fn anytime(&self, today: &DateTime<Utc>) -> Vec<Task> {
         let project_visible = |task: &Task, store: &ThingsStore| {
             let Some(project_uuid) = store.effective_project_uuid(task) else {
                 return true;
@@ -684,7 +699,7 @@ impl ThingsStore {
                 return false;
             }
             if let Some(start_date) = project.start_date
-                && start_date > today_utc
+                && start_date > *today
             {
                 return false;
             }
@@ -702,7 +717,7 @@ impl ThingsStore {
                     && !t.is_heading()
                     && !t.title.trim().is_empty()
                     && t.entity == "Task6"
-                    && (t.start_date.is_none() || t.start_date <= Some(today_utc))
+                    && (t.start_date.is_none() || t.start_date <= Some(*today))
                     && project_visible(t, self)
             })
             .cloned()
@@ -755,10 +770,11 @@ impl ThingsStore {
                 };
 
                 let stop_day = stop_date
-                    .with_timezone(&Local)
+                    .with_timezone(&fixed_local_offset())
                     .date_naive()
                     .and_hms_opt(0, 0, 0)
-                    .and_then(|d| Local.from_local_datetime(&d).single());
+                    .and_then(|d| fixed_local_offset().from_local_datetime(&d).single())
+                    .map(|d| d.with_timezone(&Local));
 
                 if let Some(from_day) = from_date
                     && let Some(sd) = stop_day
@@ -779,9 +795,14 @@ impl ThingsStore {
             .collect();
 
         out.sort_by_key(|t| {
+            let stop_key = t
+                .stop_date
+                .map(|d| (d.timestamp(), d.timestamp_subsec_nanos()))
+                .unwrap_or((0, 0));
             (
-                Reverse(t.stop_date.map(|d| d.timestamp()).unwrap_or(0)),
+                Reverse(stop_key),
                 Reverse(t.index),
+                t.uuid.clone(),
             )
         });
         out

@@ -164,6 +164,17 @@ class Task:
         return self.start_date <= today_utc
 
     @property
+    def is_staged_for_today(self) -> bool:
+        if self.start_date is None:
+            return False
+        if self.start != START_SOMEDAY:
+            return False
+        today_utc = datetime.now(tz=timezone.utc).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        return self.start_date <= today_utc
+
+    @property
     def is_inbox(self) -> bool:
         return self.start == START_INBOX and not self.project and not self.area
 
@@ -545,6 +556,7 @@ class ThingsStore:
             key=lambda t: (
                 -(t.stop_date.timestamp() if t.stop_date else 0),
                 -t.index,
+                t.uuid,
             ),
         )
 

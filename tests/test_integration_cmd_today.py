@@ -156,6 +156,33 @@ def test_today_detailed_with_notes_and_checklist(store_from_journal) -> None:
     assert run_cli("today --detailed", store) == get_fixture("today_detailed")
 
 
+def test_today_marks_staged_someday_items(store_from_journal) -> None:
+    day_ts = _today_ts()
+    journal = [
+        _task_create(
+            "A7h5eCi24RvAWKC3Hv3muf",
+            "Call back eye doctor",
+            ix=10,
+            st=2,
+            sr=day_ts,
+            tir=day_ts,
+            ti=10,
+        ),
+        _task_create(
+            "KGvAPpMrzHAKMdgMiERP1V",
+            "Set up git config to use GitHub auth token on server",
+            ix=20,
+            st=1,
+            sr=day_ts,
+            tir=day_ts,
+            ti=20,
+        ),
+    ]
+
+    store = store_from_journal(journal)
+    assert run_cli("today", store) == get_fixture("today_staged")
+
+
 def test_no_args_defaults_to_today() -> None:
     """Invoking with no arguments should show the Today view without error."""
     assert "No tasks for today." in run_cli("", store())

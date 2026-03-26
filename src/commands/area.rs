@@ -17,8 +17,14 @@ pub struct AreaArgs {
 }
 
 impl Command for AreaArgs {
-    fn run(&self, cli: &Cli, out: &mut dyn std::io::Write) -> Result<()> {
+    fn run_with_ctx(
+        &self,
+        cli: &Cli,
+        out: &mut dyn std::io::Write,
+        ctx: &mut dyn crate::cmd_ctx::CmdCtx,
+    ) -> Result<()> {
         let store = cli.load_store()?;
+        let today = ctx.today();
         let (area_opt, err, ambiguous) = store.resolve_area_identifier(&self.area_id);
         let Some(area) = area_opt else {
             eprintln!("{err}");
@@ -114,7 +120,9 @@ impl Command for AreaArgs {
                     &store,
                     false,
                     true,
+                    false,
                     Some(id_prefix_len),
+                    &today,
                     cli.no_color,
                 );
                 writeln!(
@@ -144,7 +152,9 @@ impl Command for AreaArgs {
                         "  ",
                         Some(id_prefix_len),
                         true,
+                        false,
                         self.detailed,
+                        &today,
                         cli.no_color,
                     )
                 )?;

@@ -18,8 +18,14 @@ pub struct LogbookArgs {
 }
 
 impl Command for LogbookArgs {
-    fn run(&self, cli: &Cli, out: &mut dyn Write) -> Result<()> {
+    fn run_with_ctx(
+        &self,
+        cli: &Cli,
+        out: &mut dyn Write,
+        ctx: &mut dyn crate::cmd_ctx::CmdCtx,
+    ) -> Result<()> {
         let store = cli.load_store()?;
+        let today = ctx.today();
 
         let from_day =
             parse_day(self.from_date.as_deref(), "--from").map_err(anyhow::Error::msg)?;
@@ -72,7 +78,9 @@ impl Command for LogbookArgs {
                 &store,
                 true,
                 false,
+                false,
                 Some(id_prefix_len),
+                &today,
                 cli.no_color,
             );
             writeln!(
