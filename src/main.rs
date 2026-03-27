@@ -81,6 +81,11 @@ mod tests {
     }
 
     #[test]
+    fn cli_trycmd_edit() {
+        run_trycmd_cases("trycmd/edit/**/*.trycmd");
+    }
+
+    #[test]
     fn cli_trycmd_find() {
         run_trycmd_cases("trycmd/find/**/*.trycmd");
     }

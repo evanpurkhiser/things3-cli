@@ -1,7 +1,7 @@
 use crate::ids::ThingsId;
-use crate::wire::deserialize_optional_field;
 use crate::wire::notes::TaskNotes;
 use crate::wire::recurrence::RecurrenceRule;
+use crate::wire::{deserialize_default_on_null, deserialize_optional_field};
 use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -72,11 +72,19 @@ pub struct TaskProps {
     pub sort_index: i32,
 
     /// `ti`: Today-view sort index.
-    #[serde(rename = "ti", default)]
+    #[serde(
+        rename = "ti",
+        default,
+        deserialize_with = "deserialize_default_on_null"
+    )]
     pub today_sort_index: i32,
 
     /// `do`: due date offset (observed as `0` in typical payloads).
-    #[serde(rename = "do", default)]
+    #[serde(
+        rename = "do",
+        default,
+        deserialize_with = "deserialize_default_on_null"
+    )]
     pub due_date_offset: i32,
 
     /// `rr`: recurrence rule object (`null` for non-recurring).
@@ -96,7 +104,11 @@ pub struct TaskProps {
     pub after_completion_reference_date: Option<i64>,
 
     /// `icc`: checklist item count.
-    #[serde(rename = "icc", default)]
+    #[serde(
+        rename = "icc",
+        default,
+        deserialize_with = "deserialize_default_on_null"
+    )]
     pub checklist_item_count: i32,
 
     /// `icp`: instance creation paused flag.
@@ -112,11 +124,19 @@ pub struct TaskProps {
     pub last_alarm_interaction: Option<f64>,
 
     /// `sb`: evening section bit (`1` evening, `0` normal).
-    #[serde(rename = "sb", default)]
+    #[serde(
+        rename = "sb",
+        default,
+        deserialize_with = "deserialize_default_on_null"
+    )]
     pub evening_bit: i32,
 
     /// `lt`: leaves tombstone when deleted.
-    #[serde(rename = "lt", default)]
+    #[serde(
+        rename = "lt",
+        default,
+        deserialize_with = "deserialize_default_on_null"
+    )]
     pub leaves_tombstone: bool,
 
     /// `tr`: trashed state.

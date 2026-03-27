@@ -66,6 +66,37 @@ mod tests {
     }
 
     #[test]
+    fn task_props_accepts_null_for_defaulted_scalar_fields() {
+        let json = r#"{
+            "tt": "Personal Website",
+            "tp": 1,
+            "ss": 0,
+            "st": 1,
+            "pr": [],
+            "ar": [],
+            "agr": [],
+            "tg": [],
+            "ix": -7069,
+            "ti": null,
+            "do": null,
+            "rt": [],
+            "icc": null,
+            "icp": true,
+            "sb": null,
+            "lt": null,
+            "tr": false,
+            "dl": []
+        }"#;
+
+        let parsed: TaskProps = serde_json::from_str(json).expect("valid task props with nulls");
+        assert_eq!(parsed.today_sort_index, 0);
+        assert_eq!(parsed.due_date_offset, 0);
+        assert_eq!(parsed.checklist_item_count, 0);
+        assert_eq!(parsed.evening_bit, 0);
+        assert!(!parsed.leaves_tombstone);
+    }
+
+    #[test]
     fn checklist_item_accepts_task_ids_list_wire_shape() {
         let json = r#"{
             "tt": "One",
@@ -79,6 +110,59 @@ mod tests {
         assert_eq!(parsed.title, "One");
         assert_eq!(parsed.task_ids, vec![id(ID_A)]);
         assert_eq!(parsed.sort_index, 9);
+    }
+
+    #[test]
+    fn checklist_item_accepts_single_task_id_wire_shape() {
+        let json = r#"{
+            "tt": "One",
+            "ss": 0,
+            "ts": "A7h5eCi24RvAWKC3Hv3muf",
+            "ix": 9
+        }"#;
+
+        let parsed: ChecklistItemProps =
+            serde_json::from_str(json).expect("valid checklist item props");
+        assert_eq!(parsed.title, "One");
+        assert_eq!(parsed.task_ids, vec![id(ID_A)]);
+        assert_eq!(parsed.sort_index, 9);
+    }
+
+    #[test]
+    fn checklist_item_accepts_null_lt_as_default_false() {
+        let json = r#"{
+            "tt": "One",
+            "ss": 0,
+            "ts": ["A7h5eCi24RvAWKC3Hv3muf"],
+            "ix": 9,
+            "lt": null
+        }"#;
+
+        let parsed: ChecklistItemProps =
+            serde_json::from_str(json).expect("valid checklist item props with null lt");
+        assert!(!parsed.leaves_tombstone);
+    }
+
+    #[test]
+    fn checklist_item_create_omits_unset_optional_fields() {
+        let props = ChecklistItemProps {
+            title: "One".to_string(),
+            status: TaskStatus::Incomplete,
+            task_ids: vec![id(ID_A)],
+            sort_index: 9,
+            creation_date: Some(1.0),
+            modification_date: Some(2.0),
+            ..ChecklistItemProps::default()
+        };
+
+        let encoded = serde_json::to_value(props).expect("serialize checklist props");
+
+        assert_eq!(encoded.get("tt").and_then(|v| v.as_str()), Some("One"));
+        assert_eq!(encoded.get("ss").and_then(|v| v.as_i64()), Some(0));
+        assert_eq!(encoded.get("ix").and_then(|v| v.as_i64()), Some(9));
+        assert!(encoded.get("sp").is_none());
+        assert!(encoded.get("lt").is_none());
+        assert!(encoded.get("xx").is_none());
     }
 
     #[test]

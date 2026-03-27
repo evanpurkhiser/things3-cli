@@ -1,8 +1,13 @@
 use crate::ids::ThingsId;
 use crate::wire::task::TaskStatus;
+use crate::wire::{deserialize_default_on_null, deserialize_vec_or_single};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
+
+fn is_false(v: &bool) -> bool {
+    !*v
+}
 
 /// Checklist item wire properties.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -16,11 +21,11 @@ pub struct ChecklistItemProps {
     pub status: TaskStatus,
 
     /// `sp`: completion/cancellation timestamp.
-    #[serde(rename = "sp", default)]
+    #[serde(rename = "sp", default, skip_serializing_if = "Option::is_none")]
     pub stop_date: Option<f64>,
 
     /// `ts`: parent task IDs (normally a single task UUID).
-    #[serde(rename = "ts", default)]
+    #[serde(rename = "ts", default, deserialize_with = "deserialize_vec_or_single")]
     pub task_ids: Vec<ThingsId>,
 
     /// `ix`: sort index within checklist.
@@ -28,19 +33,24 @@ pub struct ChecklistItemProps {
     pub sort_index: i32,
 
     /// `cd`: creation timestamp.
-    #[serde(rename = "cd", default)]
+    #[serde(rename = "cd", default, skip_serializing_if = "Option::is_none")]
     pub creation_date: Option<f64>,
 
     /// `md`: modification timestamp.
-    #[serde(rename = "md", default)]
+    #[serde(rename = "md", default, skip_serializing_if = "Option::is_none")]
     pub modification_date: Option<f64>,
 
     /// `lt`: leaves tombstone on delete.
-    #[serde(rename = "lt", default)]
+    #[serde(
+        rename = "lt",
+        default,
+        deserialize_with = "deserialize_default_on_null",
+        skip_serializing_if = "is_false"
+    )]
     pub leaves_tombstone: bool,
 
     /// `xx`: conflict override metadata.
-    #[serde(rename = "xx", default)]
+    #[serde(rename = "xx", default, skip_serializing_if = "Option::is_none")]
     pub conflict_overrides: Option<Value>,
 }
 

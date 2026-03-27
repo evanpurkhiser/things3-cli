@@ -1,0 +1,33 @@
+[
+  {
+    "A7h5eCi24RvAWKC3Hv3muf": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Task with checklist",
+        "tp": 0,
+        "ss": 0,
+        "st": 0,
+        "ix": 0,
+        "cd": 1,
+        "md": 1
+      }
+    }
+  },
+  {
+    "MpkEei6ybkFS2n6SXvwfLf": {
+      "t": 0,
+      "e": "ChecklistItem3",
+      "p": {
+        "tt": "One",
+        "ts": [
+          "A7h5eCi24RvAWKC3Hv3muf"
+        ],
+        "ss": 0,
+        "ix": 1,
+        "cd": 1,
+        "md": 1
+      }
+    }
+  }
+]

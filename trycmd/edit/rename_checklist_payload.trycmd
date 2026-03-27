@@ -1,0 +1,18 @@
+```trycmd
+$ run.sh things3 --today-ts 1699920000 --now-ts 1700000111.0 edit A7h5eCi24RvAWKC3Hv3muf --rename-checklist 'MpkEei:Renamed step'
+✓ Edited Task with checklist  A7h5eCi24RvAWKC3Hv3muf (rename-checklist)
+{
+  "ancestor_index": 0,
+  "changes": {
+    "MpkEei6ybkFS2n6SXvwfLf": {
+      "e": "ChecklistItem3",
+      "p": {
+        "md": 1700000111.0,
+        "tt": "Renamed step"
+      },
+      "t": 1
+    }
+  }
+}
+
+```
