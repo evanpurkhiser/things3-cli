@@ -30,6 +30,9 @@ pub struct Cli {
     /// Set the logging output format
     #[arg(long, global = true, value_enum, default_value_t = logging::LogFormat::Auto)]
     pub log_format: logging::LogFormat,
+    /// For testing: advanced tracing filter directive
+    #[arg(long, global = true, hide = true, value_name = "DIRECTIVE")]
+    pub log_filter: Option<String>,
     /// For testing: load state from a JSON journal file instead of syncing.
     /// The file must contain a JSON array of WireItem objects (each is a
     /// map of uuid -> WireObject).
@@ -69,7 +72,7 @@ impl Cli {
 
 pub fn run() -> Result<()> {
     let mut cli = Cli::parse();
-    logging::init(cli.log_level, cli.log_format);
+    logging::init(cli.log_level, cli.log_format, cli.log_filter.as_deref());
     let command = cli
         .command
         .take()

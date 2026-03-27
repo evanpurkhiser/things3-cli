@@ -2,6 +2,7 @@ use crate::auth::load_auth;
 use crate::client::ThingsCloudClient;
 use crate::wire::wire_object::WireObject;
 use anyhow::Result;
+use serde_json::json;
 use std::collections::BTreeMap;
 use tracing::{debug, error};
 
@@ -32,17 +33,26 @@ impl CloudWriter for LoggingCloudWriter {
         ancestor_index: Option<i64>,
     ) -> Result<i64> {
         let uuids = changes.keys().cloned().collect::<Vec<_>>();
+        let request_value = json!({
+            "ancestor_index": ancestor_index.unwrap_or(self.inner.head_index()),
+            "changes": &changes,
+        });
+        let request_json =
+            serde_json::to_string(&request_value).unwrap_or_else(|_| "{}".to_string());
         debug!(
+            target: "things_cli::cloud_commit::request",
             event = "cloud.commit.request",
             ancestor_index,
             change_count = uuids.len(),
             uuids = ?uuids,
+            request_json = %request_json,
             "cloud commit request"
         );
 
         match self.inner.commit(changes, ancestor_index) {
             Ok(head_index) => {
                 debug!(
+                    target: "things_cli::cloud_commit::success",
                     event = "cloud.commit.success",
                     ancestor_index,
                     change_count = uuids.len(),
@@ -54,6 +64,7 @@ impl CloudWriter for LoggingCloudWriter {
             }
             Err(err) => {
                 error!(
+                    target: "things_cli::cloud_commit::error",
                     event = "cloud.commit.error",
                     ancestor_index,
                     change_count = uuids.len(),

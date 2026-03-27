@@ -1,10 +1,11 @@
 use clap::ValueEnum;
 use std::sync::OnceLock;
 use tracing::level_filters::LevelFilter;
-use tracing_subscriber::{Layer, prelude::*};
+use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{prelude::*, Layer};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, ValueEnum, Default)]
-#[clap(rename_all = "lower")]
+#[clap(rename_all = "kebab-case")]
 pub enum LogFormat {
     #[default]
     Auto,
@@ -14,7 +15,7 @@ pub enum LogFormat {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, ValueEnum, Default)]
-#[clap(rename_all = "lower")]
+#[clap(rename_all = "kebab-case")]
 pub enum Level {
     Error,
     Warn,
@@ -38,7 +39,7 @@ impl Level {
     }
 }
 
-pub fn init(log_level: Level, log_format: LogFormat) {
+pub fn init(log_level: Level, log_format: LogFormat, log_filter: Option<&str>) {
     static INIT: OnceLock<()> = OnceLock::new();
     let _ = INIT.get_or_init(|| {
         let subscriber = tracing_subscriber::fmt::layer()
@@ -62,8 +63,17 @@ pub fn init(log_level: Level, log_format: LogFormat) {
                 .boxed(),
         };
 
+        let filter = match log_filter {
+            Some(directive) => EnvFilter::builder()
+                .with_default_directive(log_level.level_filter().into())
+                .parse_lossy(directive),
+            None => EnvFilter::builder()
+                .with_default_directive(log_level.level_filter().into())
+                .from_env_lossy(),
+        };
+
         tracing_subscriber::registry()
-            .with(format.with_filter(log_level.level_filter()))
+            .with(format.with_filter(filter))
             .init();
     });
 }
