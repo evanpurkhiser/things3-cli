@@ -13,10 +13,10 @@ From source:
 cargo install --path .
 ```
 
-From GitHub:
+From crates.io:
 
 ```bash
-cargo install --git https://github.com/evanpurkhiser/things3-cloud
+cargo install things3-cloud
 ```
 
 ## Build
