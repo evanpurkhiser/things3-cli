@@ -7,7 +7,7 @@ $ run.sh things3 --today-ts 1699920000 --now-ts 1700000333.0 schedule A7h5eCi24R
     "A7h5eCi24RvAWKC3Hv3muf": {
       "e": "Task6",
       "p": {
-        "dd": 2022379200.0,
+        "dd": 2022364800.0,
         "md": 1700000333.0
       },
       "t": 1

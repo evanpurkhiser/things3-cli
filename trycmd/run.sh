@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+export TZ=UTC
+
 # Wrapper for trycmd cases.
 #
 # Default behavior: if ./journal.json exists and --load-journal is not
