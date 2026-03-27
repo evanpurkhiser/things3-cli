@@ -32,10 +32,10 @@ pub struct Cli {
     #[arg(long, hide = true)]
     pub no_cloud: bool,
     /// Set the log level filter
-    #[arg(long, global = true, value_enum, default_value_t = logging::Level::Info)]
+    #[arg(long, value_enum, default_value_t = logging::Level::Info)]
     pub log_level: logging::Level,
     /// Set the logging output format
-    #[arg(long, global = true, value_enum, default_value_t = logging::LogFormat::Auto)]
+    #[arg(long, value_enum, default_value_t = logging::LogFormat::Auto)]
     pub log_format: logging::LogFormat,
     /// For testing: advanced tracing filter directive
     #[arg(long, global = true, hide = true, value_name = "DIRECTIVE")]
