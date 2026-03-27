@@ -1,0 +1,10 @@
+```trycmd
+$ run.sh things3 tags
+⌗ Tags  (4)
+
+  ⌗ Work
+  ├╴⌗ Meetings
+  └╴⌗ Projects
+  ⌗ Personal
+
+```

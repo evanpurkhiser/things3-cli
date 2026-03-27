@@ -1,0 +1,9 @@
+```trycmd
+$ run.sh things3 projects
+● Projects  (3)
+
+  5 ◑ Alpha Project
+  4 ◉ Beta Project
+  9 ◯ Gamma Project
+
+```

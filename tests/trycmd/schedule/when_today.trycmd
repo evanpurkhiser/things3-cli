@@ -1,0 +1,21 @@
+```trycmd
+$ TRYCMD_MUTATION_LOG=1 TRYCMD_PRETTY_DEBUG_JSON=1 run.sh things3 --today-ts 1699920000 --now-ts 1700000333.0 schedule A7h5eCi24RvAWKC3Hv3muf --when today
+✓ Scheduled Schedule me  A7h5eCi24RvAWKC3Hv3muf (today)
+{
+  "ancestor_index": 0,
+  "changes": {
+    "A7h5eCi24RvAWKC3Hv3muf": {
+      "e": "Task6",
+      "p": {
+        "md": 1700000333.0,
+        "sb": 0,
+        "sr": 1699920000,
+        "st": 1,
+        "tir": 1699920000
+      },
+      "t": 1
+    }
+  }
+}
+
+```

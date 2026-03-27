@@ -1,0 +1,9 @@
+```trycmd
+$ run.sh things3 find --any-status
+⌗ Find  (3 tasks)
+
+  C ☒ Canceled task
+  A ▢ Open task
+  B ◼ Done task
+
+```

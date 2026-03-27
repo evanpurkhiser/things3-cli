@@ -1,0 +1,7 @@
+```trycmd
+$ run.sh things3 find --area Work --tag Urgent
+⌗ Find  (1 task)
+
+  As ▢ Urgent work task  [Urgent]
+
+```

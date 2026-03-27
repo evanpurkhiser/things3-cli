@@ -1,0 +1,51 @@
+```trycmd
+$ TRYCMD_MUTATION_LOG=1 TRYCMD_PRETTY_DEBUG_JSON=1 run.sh things3 --today-ts 1699920000 --now-ts 1700000000.0 new 'Task today' --when today
+✓ Created Task today  [..]
+{
+  "ancestor_index": 0,
+  "changes": {
+    "[..]": {
+      "e": "Task6",
+      "p": {
+        "acrd": null,
+        "agr": [],
+        "ar": [],
+        "ato": null,
+        "cd": 1700000000.0,
+        "dd": null,
+        "dds": null,
+        "dl": [],
+        "do": 0,
+        "icc": 0,
+        "icp": false,
+        "icsd": null,
+        "ix": 0,
+        "lai": null,
+        "lt": false,
+        "md": 1700000000.0,
+        "nt": null,
+        "pr": [],
+        "rr": null,
+        "rt": [],
+        "sb": 0,
+        "sp": null,
+        "sr": 1699920000,
+        "ss": 0,
+        "st": 1,
+        "tg": [],
+        "ti": 0,
+        "tir": 1699920000,
+        "tp": 0,
+        "tr": false,
+        "tt": "Task today",
+        "xx": {
+          "_t": "oo",
+          "sn": {}
+        }
+      },
+      "t": 0
+    }
+  }
+}
+
+```

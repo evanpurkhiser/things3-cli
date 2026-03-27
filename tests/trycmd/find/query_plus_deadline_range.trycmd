@@ -1,0 +1,7 @@
+```trycmd
+$ run.sh things3 find file --deadline '<=2026-05-01'
+⌗ Find  (1 task)
+
+  A ▢ File taxes  ⚑ due by 2026-04-15
+
+```

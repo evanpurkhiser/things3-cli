@@ -3,10 +3,10 @@ use crate::arg_types::IdentifierToken;
 use crate::commands::{Command, TagDeltaArgs};
 use crate::common::{colored, resolve_tag_ids, task6_note, DIM, GREEN, ICONS};
 use crate::ids::ThingsId;
-use crate::wire::checklist::ChecklistItemPatch;
+use crate::wire::checklist::{ChecklistItemPatch, ChecklistItemProps};
 use crate::wire::notes::{StructuredTaskNotes, TaskNotes};
 use crate::wire::task::{TaskPatch, TaskStart, TaskStatus};
-use crate::wire::wire_object::{EntityType, OperationType, Properties, WireObject};
+use crate::wire::wire_object::{EntityType, WireObject};
 use anyhow::Result;
 use clap::Args;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -349,15 +349,13 @@ fn build_edit_plan(
                 if matches.len() > 1 {
                     return Err(format!("Ambiguous checklist item prefix: '{short_id}'"));
                 }
-                let p = ChecklistItemPatch {
-                    title: Some(new_title.to_string()),
-                    modification_date: Some(now),
-                    ..Default::default()
-                }
-                .into_properties();
                 changes.insert(
                     matches[0].uuid.to_string(),
-                    WireObject { operation_type: OperationType::Update, entity_type: Some(EntityType::ChecklistItem3), payload: Properties::Unknown(p) },
+                    WireObject::update(EntityType::ChecklistItem3, ChecklistItemPatch {
+                        title: Some(new_title.to_string()),
+                        modification_date: Some(now),
+                        ..Default::default()
+                    }),
                 );
             }
             if !labels.iter().any(|l| l == "rename-checklist") {
@@ -377,19 +375,17 @@ fn build_edit_plan(
                 if title.is_empty() {
                     return Err("Checklist item title cannot be empty.".to_string());
                 }
-                let p = ChecklistItemPatch {
-                    title: Some(title.to_string()),
-                    task_ids: Some(vec![task.uuid.clone()]),
-                    status: Some(TaskStatus::Incomplete),
-                    sort_index: Some(max_ix + idx as i32 + 1),
-                    creation_date: Some(now),
-                    modification_date: Some(now),
-                }
-                .into_properties();
-
                 changes.insert(
                     next_id(),
-                    WireObject { operation_type: OperationType::Create, entity_type: Some(EntityType::ChecklistItem3), payload: Properties::Unknown(p) },
+                    WireObject::create(EntityType::ChecklistItem3, ChecklistItemProps {
+                        title: title.to_string(),
+                        task_ids: vec![task.uuid.clone()],
+                        status: TaskStatus::Incomplete,
+                        sort_index: max_ix + idx as i32 + 1,
+                        creation_date: Some(now),
+                        modification_date: Some(now),
+                        ..Default::default()
+                    }),
                 );
             }
             if !labels.iter().any(|l| l == "add-checklist") {
@@ -408,7 +404,7 @@ fn build_edit_plan(
             update.modification_date = Some(now);
             changes.insert(
                 task.uuid.to_string(),
-                WireObject { operation_type: OperationType::Update, entity_type: Some(EntityType::from(task.entity.clone())), payload: Properties::Unknown(update.into_properties()) },
+                WireObject::update(EntityType::from(task.entity.clone()), update),
             );
         }
     }
@@ -423,9 +419,13 @@ fn build_edit_plan(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ids::ThingsId;
     use crate::store::{ThingsStore, fold_items};
+    use crate::wire::area::AreaProps;
+    use crate::wire::checklist::ChecklistItemProps;
+    use crate::wire::tags::TagProps;
+    use crate::wire::task::{TaskProps, TaskStart, TaskStatus, TaskType};
     use crate::wire::wire_object::WireItem;
-    use crate::wire::task::TaskStatus;
     use crate::wire::wire_object::{EntityType, OperationType, WireObject};
     use serde_json::json;
     use std::collections::BTreeMap;
@@ -452,15 +452,16 @@ mod tests {
             uuid.to_string(),
             WireObject::create(
                 EntityType::Task6,
-                BTreeMap::from([
-                    ("tt".to_string(), json!(title)),
-                    ("tp".to_string(), json!(0)),
-                    ("ss".to_string(), json!(0)),
-                    ("st".to_string(), json!(0)),
-                    ("ix".to_string(), json!(0)),
-                    ("cd".to_string(), json!(1)),
-                    ("md".to_string(), json!(1)),
-                ]),
+                TaskProps {
+                    title: title.to_string(),
+                    item_type: TaskType::Todo,
+                    status: TaskStatus::Incomplete,
+                    start_location: TaskStart::Inbox,
+                    sort_index: 0,
+                    creation_date: Some(1.0),
+                    modification_date: Some(1.0),
+                    ..Default::default()
+                },
             ),
         )
     }
@@ -468,23 +469,24 @@ mod tests {
     fn task_with(
         uuid: &str,
         title: &str,
-        props: BTreeMap<String, serde_json::Value>,
+        tag_ids: Vec<&str>,
     ) -> (String, WireObject) {
-        let mut base = BTreeMap::from([
-            ("tt".to_string(), json!(title)),
-            ("tp".to_string(), json!(0)),
-            ("ss".to_string(), json!(0)),
-            ("st".to_string(), json!(0)),
-            ("ix".to_string(), json!(0)),
-            ("cd".to_string(), json!(1)),
-            ("md".to_string(), json!(1)),
-        ]);
-        for (k, v) in props {
-            base.insert(k, v);
-        }
         (
             uuid.to_string(),
-            WireObject { operation_type: OperationType::Create, entity_type: Some(EntityType::Task6), payload: Properties::Unknown(base) },
+            WireObject::create(
+                EntityType::Task6,
+                TaskProps {
+                    title: title.to_string(),
+                    item_type: TaskType::Todo,
+                    status: TaskStatus::Incomplete,
+                    start_location: TaskStart::Inbox,
+                    sort_index: 0,
+                    tag_ids: tag_ids.iter().map(|t| ThingsId::from(*t)).collect(),
+                    creation_date: Some(1.0),
+                    modification_date: Some(1.0),
+                    ..Default::default()
+                },
+            ),
         )
     }
 
@@ -493,15 +495,16 @@ mod tests {
             uuid.to_string(),
             WireObject::create(
                 EntityType::Task6,
-                BTreeMap::from([
-                    ("tt".to_string(), json!(title)),
-                    ("tp".to_string(), json!(1)),
-                    ("ss".to_string(), json!(0)),
-                    ("st".to_string(), json!(1)),
-                    ("ix".to_string(), json!(0)),
-                    ("cd".to_string(), json!(1)),
-                    ("md".to_string(), json!(1)),
-                ]),
+                TaskProps {
+                    title: title.to_string(),
+                    item_type: TaskType::Project,
+                    status: TaskStatus::Incomplete,
+                    start_location: TaskStart::Anytime,
+                    sort_index: 0,
+                    creation_date: Some(1.0),
+                    modification_date: Some(1.0),
+                    ..Default::default()
+                },
             ),
         )
     }
@@ -511,10 +514,11 @@ mod tests {
             uuid.to_string(),
             WireObject::create(
                 EntityType::Area3,
-                BTreeMap::from([
-                    ("tt".to_string(), json!(title)),
-                    ("ix".to_string(), json!(0)),
-                ]),
+                AreaProps {
+                    title: title.to_string(),
+                    sort_index: 0,
+                    ..Default::default()
+                },
             ),
         )
     }
@@ -524,10 +528,11 @@ mod tests {
             uuid.to_string(),
             WireObject::create(
                 EntityType::Tag4,
-                BTreeMap::from([
-                    ("tt".to_string(), json!(title)),
-                    ("ix".to_string(), json!(0)),
-                ]),
+                TagProps {
+                    title: title.to_string(),
+                    sort_index: 0,
+                    ..Default::default()
+                },
             ),
         )
     }
@@ -537,14 +542,15 @@ mod tests {
             uuid.to_string(),
             WireObject::create(
                 EntityType::ChecklistItem3,
-                BTreeMap::from([
-                    ("tt".to_string(), json!(title)),
-                    ("ts".to_string(), json!([task_uuid])),
-                    ("ss".to_string(), json!(0)),
-                    ("ix".to_string(), json!(ix)),
-                    ("cd".to_string(), json!(1)),
-                    ("md".to_string(), json!(1)),
-                ]),
+                ChecklistItemProps {
+                    title: title.to_string(),
+                    task_ids: vec![ThingsId::from(task_uuid)],
+                    status: TaskStatus::Incomplete,
+                    sort_index: ix,
+                    creation_date: Some(1.0),
+                    modification_date: Some(1.0),
+                    ..Default::default()
+                },
             ),
         )
     }
@@ -719,7 +725,7 @@ mod tests {
             task_with(
                 TASK_UUID,
                 "A",
-                BTreeMap::from([("tg".to_string(), json!([tag1]))]),
+                vec![tag1],
             ),
             tag(tag1, "Work"),
             tag(tag2, "Focus"),

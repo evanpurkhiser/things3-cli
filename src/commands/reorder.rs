@@ -1,12 +1,11 @@
 use crate::app::Cli;
 use crate::commands::Command;
 use crate::common::{colored, DIM, GREEN, ICONS};
-use crate::wire::task::{TaskStart, TaskStatus};
-use crate::wire::wire_object::{EntityType, OperationType, Properties, WireObject};
+use crate::wire::task::{TaskPatch, TaskStart, TaskStatus};
+use crate::wire::wire_object::{EntityType, WireObject};
 use anyhow::Result;
 use chrono::{TimeZone, Utc};
 use clap::Args;
-use serde_json::json;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
@@ -85,22 +84,24 @@ fn build_reorder_plan(
             anchor.today_index + 1
         };
 
-        let mut props = BTreeMap::new();
-        props.insert("tir".to_string(), json!(anchor_tir));
-        props.insert("ti".to_string(), json!(new_ti));
-        if item.evening != anchor.evening {
-            props.insert("sb".to_string(), json!(if anchor.evening { 1 } else { 0 }));
-        }
-        props.insert("md".to_string(), json!(now));
-
+        let sb = if item.evening != anchor.evening {
+            Some(if anchor.evening { 1 } else { 0 })
+        } else {
+            None
+        };
         let mut changes = BTreeMap::new();
         changes.insert(
             item.uuid.to_string(),
-            WireObject {
-                operation_type: OperationType::Update,
-                entity_type: Some(EntityType::from(item.entity.clone())),
-                payload: Properties::Unknown(props),
-            },
+            WireObject::update(
+                EntityType::from(item.entity.clone()),
+                TaskPatch {
+                    today_index_reference: Some(Some(anchor_tir)),
+                    today_sort_index: Some(new_ti),
+                    evening_bit: sb,
+                    modification_date: Some(now),
+                    ..Default::default()
+                },
+            ),
         );
 
         let reorder_label = if args.before_id.is_some() {
@@ -244,17 +245,17 @@ fn build_reorder_plan(
     let mut commits = Vec::new();
     let mut ancestor = initial_ancestor_index;
     for (task_uuid, task_index, task_entity) in index_updates {
-        let mut props = BTreeMap::new();
-        props.insert("ix".to_string(), json!(task_index));
-        props.insert("md".to_string(), json!(now));
         let mut changes = BTreeMap::new();
         changes.insert(
             task_uuid,
-            WireObject {
-                operation_type: OperationType::Update,
-                entity_type: Some(EntityType::from(task_entity)),
-                payload: Properties::Unknown(props),
-            },
+            WireObject::update(
+                EntityType::from(task_entity),
+                TaskPatch {
+                    sort_index: Some(task_index),
+                    modification_date: Some(now),
+                    ..Default::default()
+                },
+            ),
         );
         commits.push(ReorderCommit {
             changes,
@@ -322,6 +323,8 @@ impl Command for ReorderArgs {
 mod tests {
     use super::*;
     use crate::store::{fold_items, ThingsStore};
+    use crate::wire::task::{TaskProps, TaskStart, TaskStatus, TaskType};
+    use serde_json::json;
 
     const NOW: f64 = 1_700_000_444.0;
     const TASK_A: &str = "A7h5eCi24RvAWKC3Hv3muf";
@@ -352,18 +355,19 @@ mod tests {
             uuid.to_string(),
             WireObject::create(
                 EntityType::Task6,
-                BTreeMap::from([
-                    ("tt".to_string(), json!(title)),
-                    ("tp".to_string(), json!(0)),
-                    ("ss".to_string(), json!(ss)),
-                    ("st".to_string(), json!(st)),
-                    ("ix".to_string(), json!(ix)),
-                    ("sr".to_string(), json!(sr)),
-                    ("tir".to_string(), json!(tir)),
-                    ("ti".to_string(), json!(ti)),
-                    ("cd".to_string(), json!(1)),
-                    ("md".to_string(), json!(1)),
-                ]),
+                TaskProps {
+                    title: title.to_string(),
+                    item_type: TaskType::Todo,
+                    status: TaskStatus::from(ss),
+                    start_location: TaskStart::from(st),
+                    sort_index: ix,
+                    scheduled_date: sr,
+                    today_index_reference: tir,
+                    today_sort_index: ti,
+                    creation_date: Some(1.0),
+                    modification_date: Some(1.0),
+                    ..Default::default()
+                },
             ),
         )
     }

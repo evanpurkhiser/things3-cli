@@ -1,0 +1,12 @@
+```trycmd
+$ run.sh things3 tags
+⌗ Tags  (6)
+
+  ⌗ Places
+  ├╴⌗ Restaurants
+  │ ├╴⌗ Fine Dining
+  │ └╴⌗ Casual
+  └╴⌗ Cafes
+  ⌗ Errands
+
+```

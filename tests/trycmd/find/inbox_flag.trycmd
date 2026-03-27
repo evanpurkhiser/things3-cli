@@ -1,0 +1,7 @@
+```trycmd
+$ run.sh things3 find --inbox
+⌗ Find  (1 task)
+
+  A ▢ Inbox task
+
+```

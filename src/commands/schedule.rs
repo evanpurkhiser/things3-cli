@@ -1,10 +1,10 @@
 use crate::app::Cli;
 use crate::commands::Command;
 use crate::common::{colored, day_to_timestamp, parse_day, DIM, GREEN, ICONS};
-use crate::wire::wire_object::{EntityType, OperationType, Properties, WireObject};
+use crate::wire::task::{TaskPatch, TaskStart};
+use crate::wire::wire_object::{EntityType, WireObject};
 use anyhow::Result;
 use clap::Args;
-use serde_json::{json, Value};
 use std::collections::BTreeMap;
 
 #[derive(Debug, Args)]
@@ -23,7 +23,7 @@ pub struct ScheduleArgs {
 #[derive(Debug, Clone)]
 struct SchedulePlan {
     task: crate::store::Task,
-    update: BTreeMap<String, Value>,
+    update: TaskPatch,
     labels: Vec<String>,
 }
 
@@ -38,35 +38,35 @@ fn build_schedule_plan(
         return Err(err);
     };
 
-    let mut update: BTreeMap<String, Value> = BTreeMap::new();
+    let mut update = TaskPatch::default();
     let mut when_label: Option<String> = None;
 
     if let Some(when_raw) = &args.when {
         let when = when_raw.trim();
         let when_l = when.to_lowercase();
         if when_l == "anytime" {
-            update.insert("st".to_string(), json!(1));
-            update.insert("sr".to_string(), Value::Null);
-            update.insert("tir".to_string(), Value::Null);
-            update.insert("sb".to_string(), json!(0));
+            update.start_location = Some(TaskStart::Anytime);
+            update.scheduled_date = Some(None);
+            update.today_index_reference = Some(None);
+            update.evening_bit = Some(0);
             when_label = Some("anytime".to_string());
         } else if when_l == "today" {
-            update.insert("st".to_string(), json!(1));
-            update.insert("sr".to_string(), json!(today_ts));
-            update.insert("tir".to_string(), json!(today_ts));
-            update.insert("sb".to_string(), json!(0));
+            update.start_location = Some(TaskStart::Anytime);
+            update.scheduled_date = Some(Some(today_ts));
+            update.today_index_reference = Some(Some(today_ts));
+            update.evening_bit = Some(0);
             when_label = Some("today".to_string());
         } else if when_l == "evening" {
-            update.insert("st".to_string(), json!(1));
-            update.insert("sr".to_string(), json!(today_ts));
-            update.insert("tir".to_string(), json!(today_ts));
-            update.insert("sb".to_string(), json!(1));
+            update.start_location = Some(TaskStart::Anytime);
+            update.scheduled_date = Some(Some(today_ts));
+            update.today_index_reference = Some(Some(today_ts));
+            update.evening_bit = Some(1);
             when_label = Some("evening".to_string());
         } else if when_l == "someday" {
-            update.insert("st".to_string(), json!(2));
-            update.insert("sr".to_string(), Value::Null);
-            update.insert("tir".to_string(), Value::Null);
-            update.insert("sb".to_string(), json!(0));
+            update.start_location = Some(TaskStart::Someday);
+            update.scheduled_date = Some(None);
+            update.today_index_reference = Some(None);
+            update.evening_bit = Some(0);
             when_label = Some("someday".to_string());
         } else {
             let when_day = match parse_day(Some(when), "--when") {
@@ -80,16 +80,13 @@ fn build_schedule_plan(
             };
             let day_ts = day_to_timestamp(when_day);
             if day_ts <= today_ts {
-                update.insert("st".to_string(), json!(1));
-                update.insert("sr".to_string(), json!(day_ts));
-                update.insert("tir".to_string(), json!(day_ts));
-                update.insert("sb".to_string(), json!(0));
+                update.start_location = Some(TaskStart::Anytime);
             } else {
-                update.insert("st".to_string(), json!(2));
-                update.insert("sr".to_string(), json!(day_ts));
-                update.insert("tir".to_string(), json!(day_ts));
-                update.insert("sb".to_string(), json!(0));
+                update.start_location = Some(TaskStart::Someday);
             }
+            update.scheduled_date = Some(Some(day_ts));
+            update.today_index_reference = Some(Some(day_ts));
+            update.evening_bit = Some(0);
             when_label = Some(format!("when={when}"));
         }
     }
@@ -100,24 +97,24 @@ fn build_schedule_plan(
             Ok(None) => return Err("--deadline requires YYYY-MM-DD".to_string()),
             Err(e) => return Err(e),
         };
-        update.insert("dd".to_string(), json!(day_to_timestamp(day) as f64));
+        update.deadline = Some(Some(day_to_timestamp(day) as f64));
     }
     if args.clear_deadline {
-        update.insert("dd".to_string(), Value::Null);
+        update.deadline = Some(None);
     }
 
     if update.is_empty() {
         return Err("No schedule changes requested.".to_string());
     }
 
-    update.insert("md".to_string(), json!(now));
+    update.modification_date = Some(now);
 
     let mut labels = Vec::new();
-    if update.contains_key("st") {
+    if update.start_location.is_some() {
         labels.push(when_label.unwrap_or_else(|| "when".to_string()));
     }
-    if update.contains_key("dd") {
-        if update.get("dd").is_some_and(Value::is_null) {
+    if update.deadline.is_some() {
+        if update.deadline == Some(None) {
             labels.push("deadline=none".to_string());
         } else {
             labels.push(format!(
@@ -154,11 +151,10 @@ impl Command for ScheduleArgs {
         let mut changes = BTreeMap::new();
         changes.insert(
             plan.task.uuid.to_string(),
-            WireObject {
-                operation_type: OperationType::Update,
-                entity_type: Some(EntityType::from(plan.task.entity.clone())),
-                payload: Properties::Unknown(plan.update.clone()),
-            },
+            WireObject::update(
+                EntityType::from(plan.task.entity.clone()),
+                plan.update.clone(),
+            ),
         );
 
         if let Err(e) = ctx.commit_changes(changes, None) {
@@ -187,8 +183,10 @@ impl Command for ScheduleArgs {
 mod tests {
     use super::*;
     use crate::store::{fold_items, ThingsStore};
+    use crate::wire::task::{TaskProps, TaskStart, TaskStatus, TaskType};
     use crate::wire::wire_object::WireItem;
     use crate::wire::wire_object::{EntityType, WireObject};
+    use serde_json::json;
 
     const NOW: f64 = 1_700_000_333.0;
     const TASK_UUID: &str = "A7h5eCi24RvAWKC3Hv3muf";
@@ -207,15 +205,16 @@ mod tests {
             uuid.to_string(),
             WireObject::create(
                 EntityType::Task6,
-                BTreeMap::from([
-                    ("tt".to_string(), json!(title)),
-                    ("tp".to_string(), json!(0)),
-                    ("ss".to_string(), json!(0)),
-                    ("st".to_string(), json!(0)),
-                    ("ix".to_string(), json!(0)),
-                    ("cd".to_string(), json!(1)),
-                    ("md".to_string(), json!(1)),
-                ]),
+                TaskProps {
+                    title: title.to_string(),
+                    item_type: TaskType::Todo,
+                    status: TaskStatus::Incomplete,
+                    start_location: TaskStart::Inbox,
+                    sort_index: 0,
+                    creation_date: Some(1.0),
+                    modification_date: Some(1.0),
+                    ..Default::default()
+                },
             ),
         )
     }

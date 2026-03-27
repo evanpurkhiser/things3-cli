@@ -1,0 +1,13 @@
+```trycmd
+$ run.sh things3 projects --detailed
+● Projects  (2)
+
+  5 ◯ Reading List
+    └ Pick 3 biographies
+
+  N Personal
+    K ◯ Trip Planning
+      │ Book flights
+      └ Renew passport
+
+```

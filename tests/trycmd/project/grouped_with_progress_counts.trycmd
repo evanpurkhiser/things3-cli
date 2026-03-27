@@ -1,0 +1,12 @@
+```trycmd
+$ run.sh things3 project Dx
+● Release Plan  (1/5)
+
+  Lk ▢ Draft announcement
+  7W ◼ Publish release notes
+
+  Quality Assurance
+    DT ▢ Run regression suite
+    XU ▢ Capture screenshots
+
+```

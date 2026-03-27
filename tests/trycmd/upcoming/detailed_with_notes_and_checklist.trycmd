@@ -1,0 +1,13 @@
+```trycmd
+$ run.sh things3 --today-ts 1774396800 upcoming --detailed
+▷ Upcoming  (1 tasks)
+
+  2099-02-10
+    6 ▢ Finalize launch plan
+      │ Draft timeline
+      │ Confirm stakeholders
+      │
+    3 ├╴○ Write announcement
+    H └╴● Get legal sign-off
+
+```

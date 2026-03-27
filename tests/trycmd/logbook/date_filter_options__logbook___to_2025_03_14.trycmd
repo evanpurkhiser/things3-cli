@@ -1,0 +1,8 @@
+```trycmd
+$ run.sh things3 logbook --to 2025-03-14
+✓ Logbook  (1 tasks)
+
+  2025-03-14
+    H ◼ Archive notes
+
+```

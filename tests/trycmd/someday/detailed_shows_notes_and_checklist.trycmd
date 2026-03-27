@@ -1,0 +1,15 @@
+```trycmd
+$ run.sh things3 someday --detailed
+⬚ Someday  (2 items)
+
+  H ◌ Long-term writing goals
+    └ Outline two themes
+
+  L ⬚ Build a someday reading list
+    │ Focus on classics
+    │ Keep it fun
+    │
+  T ├╴○ Pick five titles
+  K └╴● Borrow one book
+
+```

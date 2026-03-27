@@ -2,15 +2,14 @@ use crate::app::Cli;
 use crate::commands::{Command, TagDeltaArgs};
 use crate::common::{
     colored, day_to_timestamp, fmt_project_with_note, id_prefix, parse_day, resolve_tag_ids,
-    task6_note, task6_note_value, BOLD, DIM, GREEN, ICONS,
+    task6_note, BOLD, DIM, GREEN, ICONS,
 };
 use crate::ids::ThingsId;
 use crate::wire::notes::{StructuredTaskNotes, TaskNotes};
-use crate::wire::task::{TaskPatch, TaskStart, TaskStatus, TaskType};
-use crate::wire::wire_object::{EntityType, OperationType, Properties, WireObject};
+use crate::wire::task::{TaskPatch, TaskProps, TaskStart, TaskStatus, TaskType};
+use crate::wire::wire_object::{EntityType, WireObject};
 use anyhow::Result;
 use clap::{Args, Subcommand};
-use serde_json::{json, Value};
 use std::collections::BTreeMap;
 
 #[derive(Debug, Subcommand)]
@@ -321,26 +320,19 @@ impl Command for ProjectsArgs {
 
                 let store = cli.load_store()?;
                 let now = ctx.now_timestamp();
-                let mut props: BTreeMap<String, Value> = BTreeMap::new();
-                props.insert("tt".to_string(), json!(title));
-                props.insert("tp".to_string(), json!(i32::from(TaskType::Project)));
-                props.insert("ss".to_string(), json!(i32::from(TaskStatus::Incomplete)));
-                props.insert("st".to_string(), json!(i32::from(TaskStart::Anytime)));
-                props.insert("tr".to_string(), json!(false));
-                props.insert("cd".to_string(), json!(now));
-                props.insert("md".to_string(), json!(now));
-                props.insert(
-                    "nt".to_string(),
-                    if args.notes.is_empty() {
-                        Value::Null
-                    } else {
-                        task6_note_value(&args.notes)
-                    },
-                );
-                props.insert("xx".to_string(), json!({"_t":"oo","sn":{}}));
-                props.insert("icp".to_string(), json!(true));
-                props.insert("rmd".to_string(), Value::Null);
-                props.insert("rp".to_string(), Value::Null);
+                let mut props = TaskProps {
+                    title: title.to_string(),
+                    item_type: TaskType::Project,
+                    status: TaskStatus::Incomplete,
+                    start_location: TaskStart::Anytime,
+                    instance_creation_paused: true,
+                    creation_date: Some(now),
+                    modification_date: Some(now),
+                    ..Default::default()
+                };
+                if !args.notes.is_empty() {
+                    props.notes = Some(task6_note(&args.notes));
+                }
 
                 if let Some(area_id) = &args.area {
                     let (area_opt, err, _) = store.resolve_area_identifier(area_id);
@@ -348,22 +340,22 @@ impl Command for ProjectsArgs {
                         eprintln!("{err}");
                         return Ok(());
                     };
-                    props.insert("ar".to_string(), json!([area.uuid]));
+                    props.area_ids = vec![area.uuid.into()];
                 }
 
                 if let Some(when_raw) = &args.when {
                     let when = when_raw.trim().to_lowercase();
                     if when == "anytime" {
-                        props.insert("st".to_string(), json!(1));
-                        props.insert("sr".to_string(), Value::Null);
+                        props.start_location = TaskStart::Anytime;
+                        props.scheduled_date = None;
                     } else if when == "someday" {
-                        props.insert("st".to_string(), json!(2));
-                        props.insert("sr".to_string(), Value::Null);
+                        props.start_location = TaskStart::Someday;
+                        props.scheduled_date = None;
                     } else if when == "today" {
                         let ts = ctx.today_timestamp();
-                        props.insert("st".to_string(), json!(1));
-                        props.insert("sr".to_string(), json!(ts));
-                        props.insert("tir".to_string(), json!(ts));
+                        props.start_location = TaskStart::Anytime;
+                        props.scheduled_date = Some(ts);
+                        props.today_index_reference = Some(ts);
                     } else {
                         let day = match parse_day(Some(when_raw), "--when") {
                             Ok(Some(day)) => day,
@@ -374,9 +366,9 @@ impl Command for ProjectsArgs {
                             }
                         };
                         let ts = day_to_timestamp(day);
-                        props.insert("st".to_string(), json!(2));
-                        props.insert("sr".to_string(), json!(ts));
-                        props.insert("tir".to_string(), json!(ts));
+                        props.start_location = TaskStart::Someday;
+                        props.scheduled_date = Some(ts);
+                        props.today_index_reference = Some(ts);
                     }
                 }
 
@@ -386,7 +378,7 @@ impl Command for ProjectsArgs {
                         eprintln!("{err}");
                         return Ok(());
                     }
-                    props.insert("tg".to_string(), json!(tag_ids));
+                    props.tag_ids = tag_ids;
                 }
 
                 if let Some(deadline) = &args.deadline_date {
@@ -398,20 +390,13 @@ impl Command for ProjectsArgs {
                             return Ok(());
                         }
                     };
-                    props.insert("dd".to_string(), json!(day_to_timestamp(day)));
+                    props.deadline = Some(day_to_timestamp(day) as i64);
                 }
 
                 let uuid = ctx.next_id();
 
                 let mut changes = BTreeMap::new();
-                changes.insert(
-                    uuid.clone(),
-                    WireObject {
-                        operation_type: OperationType::Create,
-                        entity_type: Some(EntityType::Task6),
-                        payload: Properties::Unknown(props),
-                    },
-                );
+                changes.insert(uuid.clone(), WireObject::create(EntityType::Task6, props));
                 if let Err(e) = ctx.commit_changes(changes, None) {
                     eprintln!("Failed to create project: {e}");
                     return Ok(());
@@ -438,11 +423,10 @@ impl Command for ProjectsArgs {
                 let mut changes = BTreeMap::new();
                 changes.insert(
                     plan.project.uuid.to_string(),
-                    WireObject {
-                        operation_type: OperationType::Update,
-                        entity_type: Some(EntityType::from(plan.project.entity.clone())),
-                        payload: Properties::Unknown(plan.update.clone().into_properties()),
-                    },
+                    WireObject::update(
+                        EntityType::from(plan.project.entity.clone()),
+                        plan.update.clone(),
+                    ),
                 );
                 if let Err(e) = ctx.commit_changes(changes, None) {
                     eprintln!("Failed to edit project: {e}");
@@ -471,9 +455,14 @@ impl Command for ProjectsArgs {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ids::ThingsId;
     use crate::store::{fold_items, ThingsStore};
+    use crate::wire::area::AreaProps;
+    use crate::wire::tags::TagProps;
+    use crate::wire::task::{TaskProps, TaskStart, TaskStatus, TaskType};
     use crate::wire::wire_object::WireItem;
     use crate::wire::wire_object::{EntityType, WireObject};
+    use serde_json::json;
 
     const NOW: f64 = 1_700_000_222.0;
     const PROJECT_UUID: &str = "KGvAPpMrzHAKMdgMiERP1V";
@@ -491,19 +480,17 @@ mod tests {
             uuid.to_string(),
             WireObject::create(
                 EntityType::Task6,
-                BTreeMap::from([
-                    ("tt".to_string(), json!(title)),
-                    ("tp".to_string(), json!(1)),
-                    ("ss".to_string(), json!(0)),
-                    ("st".to_string(), json!(1)),
-                    ("ix".to_string(), json!(0)),
-                    (
-                        "tg".to_string(),
-                        json!(tags.into_iter().map(str::to_string).collect::<Vec<_>>()),
-                    ),
-                    ("cd".to_string(), json!(1)),
-                    ("md".to_string(), json!(1)),
-                ]),
+                TaskProps {
+                    title: title.to_string(),
+                    item_type: TaskType::Project,
+                    status: TaskStatus::Incomplete,
+                    start_location: TaskStart::Anytime,
+                    sort_index: 0,
+                    tag_ids: tags.iter().map(|t| ThingsId::from(*t)).collect(),
+                    creation_date: Some(1.0),
+                    modification_date: Some(1.0),
+                    ..Default::default()
+                },
             ),
         )
     }
@@ -513,10 +500,11 @@ mod tests {
             uuid.to_string(),
             WireObject::create(
                 EntityType::Area3,
-                BTreeMap::from([
-                    ("tt".to_string(), json!(title)),
-                    ("ix".to_string(), json!(0)),
-                ]),
+                AreaProps {
+                    title: title.to_string(),
+                    sort_index: 0,
+                    ..Default::default()
+                },
             ),
         )
     }
@@ -526,10 +514,11 @@ mod tests {
             uuid.to_string(),
             WireObject::create(
                 EntityType::Tag4,
-                BTreeMap::from([
-                    ("tt".to_string(), json!(title)),
-                    ("ix".to_string(), json!(0)),
-                ]),
+                TagProps {
+                    title: title.to_string(),
+                    sort_index: 0,
+                    ..Default::default()
+                },
             ),
         )
     }

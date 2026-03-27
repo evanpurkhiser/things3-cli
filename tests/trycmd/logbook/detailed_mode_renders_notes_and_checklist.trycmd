@@ -1,0 +1,15 @@
+```trycmd
+$ run.sh things3 logbook --detailed
+✓ Logbook  (2 tasks)
+
+  2025-03-16
+    7 ◼ Write retro
+      │ Capture wins
+      └ Capture risks
+    2 ◼ Pack launch checklist
+      │ Before handoff
+      │
+    9 ├╴○ Verify docs
+    Y └╴● Post update
+
+```

@@ -1,0 +1,8 @@
+```trycmd
+$ run.sh things3 find grocer
+⌗ Find  (2 tasks)
+
+  A ▢ Buy Groceries
+  C ▢ grocery run
+
+```

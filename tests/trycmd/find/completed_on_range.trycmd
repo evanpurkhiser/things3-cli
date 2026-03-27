@@ -1,0 +1,7 @@
+```trycmd
+$ run.sh things3 find --completed-on '>=2026-03-01' --completed-on '<=2026-03-31'
+⌗ Find  (1 task)
+
+  B ◼ Mid done
+
+```

@@ -1,0 +1,8 @@
+```trycmd
+$ run.sh things3 find release
+⌗ Find  (2 tasks)
+
+  A ▢ Ship release v1.0
+  B ▢ Release notes
+
+```

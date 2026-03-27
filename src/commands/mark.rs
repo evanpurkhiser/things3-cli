@@ -2,12 +2,12 @@ use crate::app::Cli;
 use crate::arg_types::IdentifierToken;
 use crate::commands::Command;
 use crate::common::{colored, DIM, GREEN, ICONS};
+use crate::wire::checklist::ChecklistItemPatch;
 use crate::wire::recurrence::RecurrenceType;
-use crate::wire::task::TaskStatus;
-use crate::wire::wire_object::{EntityType, OperationType, Properties, WireObject};
+use crate::wire::task::{TaskPatch, TaskStatus};
+use crate::wire::wire_object::{EntityType, WireObject};
 use anyhow::Result;
 use clap::{ArgGroup, Args};
-use serde_json::json;
 use std::collections::{BTreeMap, HashSet};
 
 #[derive(Debug, Args)]
@@ -215,21 +215,17 @@ fn build_mark_status_plan(
             continue;
         }
 
-        let stop_date = if action == "done" || action == "canceled" {
-            Some(now)
+        let (task_status, stop_date) = if action == "done" {
+            (TaskStatus::Completed, Some(now))
+        } else if action == "incomplete" {
+            (TaskStatus::Incomplete, None)
         } else {
-            None
+            (TaskStatus::Canceled, Some(now))
         };
 
         updates.push((
             task.uuid.clone(),
-            if action == "done" {
-                3
-            } else if action == "incomplete" {
-                0
-            } else {
-                2
-            },
+            task_status,
             task.entity.clone(),
             stop_date,
         ));
@@ -238,17 +234,17 @@ fn build_mark_status_plan(
 
     let mut changes = BTreeMap::new();
     for (uuid, status, entity, stop_date) in updates {
-        let mut props = BTreeMap::new();
-        props.insert("ss".to_string(), json!(status));
-        props.insert("sp".to_string(), json!(stop_date));
-        props.insert("md".to_string(), json!(now));
         changes.insert(
             uuid.to_string(),
-            WireObject {
-                operation_type: OperationType::Update,
-                entity_type: Some(EntityType::from(entity)),
-                payload: Properties::Unknown(props),
-            },
+            WireObject::update(
+                EntityType::from(entity),
+                TaskPatch {
+                    status: Some(status),
+                    stop_date: Some(stop_date),
+                    modification_date: Some(now),
+                    ..Default::default()
+                },
+            ),
         );
     }
 
@@ -266,26 +262,26 @@ fn build_mark_checklist_plan(
         return Err(err);
     }
 
-    let (label, status): (&str, i32) = if args.check_ids.is_some() {
-        ("checked", 3)
+    let (label, status): (&str, TaskStatus) = if args.check_ids.is_some() {
+        ("checked", TaskStatus::Completed)
     } else if args.uncheck_ids.is_some() {
-        ("unchecked", 0)
+        ("unchecked", TaskStatus::Incomplete)
     } else {
-        ("canceled", 2)
+        ("canceled", TaskStatus::Canceled)
     };
 
     let mut changes = BTreeMap::new();
     for item in &items {
-        let mut props = BTreeMap::new();
-        props.insert("ss".to_string(), json!(status));
-        props.insert("md".to_string(), json!(now));
         changes.insert(
             item.uuid.to_string(),
-            WireObject {
-                operation_type: OperationType::Update,
-                entity_type: Some(EntityType::ChecklistItem3),
-                payload: Properties::Unknown(props),
-            },
+            WireObject::update(
+                EntityType::ChecklistItem3,
+                ChecklistItemPatch {
+                    status: Some(status),
+                    modification_date: Some(now),
+                    ..Default::default()
+                },
+            ),
         );
     }
 
@@ -401,8 +397,12 @@ impl Command for MarkArgs {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ids::ThingsId;
     use crate::store::{fold_items, ThingsStore};
-    use serde_json::Value;
+    use crate::wire::checklist::ChecklistItemProps;
+    use crate::wire::recurrence::{RecurrenceRule, RecurrenceType};
+    use crate::wire::task::{TaskProps, TaskStart, TaskStatus, TaskType};
+    use serde_json::json;
 
     const NOW: f64 = 1_700_000_111.0;
     const TASK_A: &str = "A7h5eCi24RvAWKC3Hv3muf";
@@ -424,15 +424,16 @@ mod tests {
             uuid.to_string(),
             WireObject::create(
                 EntityType::Task6,
-                BTreeMap::from([
-                    ("tt".to_string(), json!(title)),
-                    ("tp".to_string(), json!(0)),
-                    ("ss".to_string(), json!(status)),
-                    ("st".to_string(), json!(0)),
-                    ("ix".to_string(), json!(0)),
-                    ("cd".to_string(), json!(1)),
-                    ("md".to_string(), json!(1)),
-                ]),
+                TaskProps {
+                    title: title.to_string(),
+                    item_type: TaskType::Todo,
+                    status: TaskStatus::from(status),
+                    start_location: TaskStart::Inbox,
+                    sort_index: 0,
+                    creation_date: Some(1.0),
+                    modification_date: Some(1.0),
+                    ..Default::default()
+                },
             ),
         )
     }
@@ -440,27 +441,29 @@ mod tests {
     fn task_with_props(
         uuid: &str,
         title: &str,
-        extra: BTreeMap<String, Value>,
+        recurrence_rule: Option<RecurrenceRule>,
+        recurrence_templates: Vec<&str>,
     ) -> (String, WireObject) {
-        let mut props = BTreeMap::from([
-            ("tt".to_string(), json!(title)),
-            ("tp".to_string(), json!(0)),
-            ("ss".to_string(), json!(0)),
-            ("st".to_string(), json!(0)),
-            ("ix".to_string(), json!(0)),
-            ("cd".to_string(), json!(1)),
-            ("md".to_string(), json!(1)),
-        ]);
-        for (k, v) in extra {
-            props.insert(k, v);
-        }
         (
             uuid.to_string(),
-            WireObject {
-                operation_type: OperationType::Create,
-                entity_type: Some(EntityType::Task6),
-                payload: Properties::Unknown(props),
-            },
+            WireObject::create(
+                EntityType::Task6,
+                TaskProps {
+                    title: title.to_string(),
+                    item_type: TaskType::Todo,
+                    status: TaskStatus::Incomplete,
+                    start_location: TaskStart::Inbox,
+                    sort_index: 0,
+                    recurrence_rule,
+                    recurrence_template_ids: recurrence_templates
+                        .iter()
+                        .map(|t| ThingsId::from(*t))
+                        .collect(),
+                    creation_date: Some(1.0),
+                    modification_date: Some(1.0),
+                    ..Default::default()
+                },
+            ),
         )
     }
 
@@ -469,14 +472,15 @@ mod tests {
             uuid.to_string(),
             WireObject::create(
                 EntityType::ChecklistItem3,
-                BTreeMap::from([
-                    ("tt".to_string(), json!(title)),
-                    ("ts".to_string(), json!([task_uuid])),
-                    ("ss".to_string(), json!(0)),
-                    ("ix".to_string(), json!(ix)),
-                    ("cd".to_string(), json!(1)),
-                    ("md".to_string(), json!(1)),
-                ]),
+                ChecklistItemProps {
+                    title: title.to_string(),
+                    task_ids: vec![ThingsId::from(task_uuid)],
+                    status: TaskStatus::Incomplete,
+                    sort_index: ix,
+                    creation_date: Some(1.0),
+                    modification_date: Some(1.0),
+                    ..Default::default()
+                },
             ),
         )
     }
@@ -561,7 +565,11 @@ mod tests {
         let store = build_store(vec![task_with_props(
             TASK_A,
             "Recurring template",
-            BTreeMap::from([("rr".to_string(), json!({"tp":0}))]),
+            Some(RecurrenceRule {
+                repeat_type: RecurrenceType::FixedSchedule,
+                ..Default::default()
+            }),
+            vec![],
         )]);
         let (plan, _, errs) = build_mark_status_plan(
             &MarkArgs {
@@ -587,7 +595,8 @@ mod tests {
         let store = build_store(vec![task_with_props(
             TASK_A,
             "Recurring instance",
-            BTreeMap::from([("rt".to_string(), json!([TPL_A, TPL_B]))]),
+            None,
+            vec![TPL_A, TPL_B],
         )]);
         let (_, _, errs) = build_mark_status_plan(
             &MarkArgs {

@@ -1,0 +1,8 @@
+```trycmd
+$ run.sh things3 find --area Work --area Personal
+⌗ Find  (2 tasks)
+
+  As ▢ Work task
+  B1 ▢ Personal task
+
+```

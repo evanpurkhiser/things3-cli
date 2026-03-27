@@ -1,0 +1,12 @@
+```trycmd
+$ run.sh things3 --today-ts 1774396800 today --detailed
+⭑ Today  (1 tasks)
+
+  A ▢ Ship release
+    │ Prep checklist
+    │ Notify stakeholders
+    │
+  M ├╴○ Confirm changelog
+  J └╴● Tag release commit
+
+```

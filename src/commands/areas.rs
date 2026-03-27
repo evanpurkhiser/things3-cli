@@ -1,7 +1,7 @@
 use crate::app::Cli;
 use crate::commands::{Command, TagDeltaArgs};
 use crate::common::{colored, id_prefix, resolve_tag_ids, BOLD, DIM, GREEN, ICONS, MAGENTA};
-use crate::wire::area::AreaPatch;
+use crate::wire::area::{AreaPatch, AreaProps};
 use crate::wire::wire_object::{EntityType, WireObject};
 use anyhow::Result;
 use clap::{Args, Subcommand};
@@ -177,13 +177,12 @@ impl Command for AreasArgs {
                 }
 
                 let store = cli.load_store()?;
-                let now = ctx.now_timestamp();
-                let mut props = BTreeMap::new();
-                props.insert("tt".to_string(), json!(title));
-                props.insert("ix".to_string(), json!(0));
-                props.insert("xx".to_string(), json!({"_t":"oo","sn":{}}));
-                props.insert("cd".to_string(), json!(now));
-                props.insert("md".to_string(), json!(now));
+                let mut props = AreaProps {
+                    title: title.to_string(),
+                    sort_index: 0,
+                    conflict_overrides: Some(json!({"_t":"oo","sn":{}})),
+                    ..Default::default()
+                };
 
                 if let Some(tags) = &args.tags {
                     let (tag_ids, err) = resolve_tag_ids(&store, tags);
@@ -191,18 +190,12 @@ impl Command for AreasArgs {
                         eprintln!("{err}");
                         return Ok(());
                     }
-                    props.insert("tg".to_string(), json!(tag_ids));
+                    props.tag_ids = tag_ids;
                 }
 
                 let uuid = ctx.next_id();
                 let mut changes = BTreeMap::new();
-                changes.insert(
-                    uuid.clone(),
-                    WireObject::create(
-                        EntityType::Area3,
-                        props.into_iter().collect::<BTreeMap<_, _>>(),
-                    ),
-                );
+                changes.insert(uuid.clone(), WireObject::create(EntityType::Area3, props));
                 if let Err(e) = ctx.commit_changes(changes, None) {
                     eprintln!("Failed to create area: {e}");
                     return Ok(());
@@ -258,7 +251,10 @@ impl Command for AreasArgs {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ids::ThingsId;
     use crate::store::{fold_items, ThingsStore};
+    use crate::wire::area::AreaProps;
+    use crate::wire::tags::TagProps;
     use crate::wire::wire_object::WireItem;
     use crate::wire::wire_object::{EntityType, WireObject};
 
@@ -278,11 +274,12 @@ mod tests {
             uuid.to_string(),
             WireObject::create(
                 EntityType::Area3,
-                BTreeMap::from([
-                    ("tt".to_string(), json!(title)),
-                    ("tg".to_string(), json!(tags)),
-                    ("ix".to_string(), json!(0)),
-                ]),
+                AreaProps {
+                    title: title.to_string(),
+                    tag_ids: tags.iter().map(|t| ThingsId::from(*t)).collect(),
+                    sort_index: 0,
+                    ..Default::default()
+                },
             ),
         )
     }
@@ -292,10 +289,11 @@ mod tests {
             uuid.to_string(),
             WireObject::create(
                 EntityType::Tag4,
-                BTreeMap::from([
-                    ("tt".to_string(), json!(title)),
-                    ("ix".to_string(), json!(0)),
-                ]),
+                TagProps {
+                    title: title.to_string(),
+                    sort_index: 0,
+                    ..Default::default()
+                },
             ),
         )
     }

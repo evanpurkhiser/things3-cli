@@ -1,0 +1,5 @@
+```trycmd
+$ run.sh things3 project zzzzz
+Item not found: zzzzz
+
+```

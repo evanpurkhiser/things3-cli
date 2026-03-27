@@ -1,0 +1,19 @@
+```trycmd
+$ run.sh things3 --today-ts 1774396800 anytime
+◌ Anytime  (8 tasks)
+
+  AK ▢ Loose task
+
+  Px ● Errands
+    AE ▢ Project-only task 1
+    JM ▢ Project-only task 2
+
+  By ◆ Home
+    Dr ▢ Area task
+    Cr ● Renovation
+      Ee ▢ Project task 1
+      Fe ▢ Project task 2
+      Gf ▢ Project task 3
+      Hiding 1 more
+
+```

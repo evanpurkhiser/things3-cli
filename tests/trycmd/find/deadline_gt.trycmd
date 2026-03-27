@@ -1,0 +1,7 @@
+```trycmd
+$ run.sh things3 find --deadline '>2026-01-01'
+⌗ Find  (1 task)
+
+  A ▢ Future  ⚑ due by 2027-01-01
+
+```

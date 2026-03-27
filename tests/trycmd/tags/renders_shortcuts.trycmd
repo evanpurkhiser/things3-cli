@@ -1,0 +1,9 @@
+```trycmd
+$ run.sh things3 tags
+⌗ Tags  (3)
+
+  ⌗ Focus  [f]
+  ⌗ Home
+  ⌗ Errands  [e]
+
+```

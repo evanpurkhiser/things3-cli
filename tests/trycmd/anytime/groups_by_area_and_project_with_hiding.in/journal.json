@@ -1,0 +1,186 @@
+[
+  {
+    "AKpeQdU6GQPonQ2GnTbHZA": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Loose task",
+        "tp": 0,
+        "ss": 0,
+        "st": 1,
+        "ix": 10,
+        "cd": 1,
+        "md": 1
+      }
+    }
+  },
+  {
+    "BysP6jfMwC3oxZ5V1XhkG5": {
+      "t": 0,
+      "e": "Area3",
+      "p": {
+        "tt": "Home",
+        "ix": 1
+      }
+    }
+  },
+  {
+    "CrCGsRA8fLpfNNqeBoNme9": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Renovation",
+        "tp": 1,
+        "ss": 0,
+        "st": 1,
+        "ix": 15,
+        "cd": 1,
+        "md": 1,
+        "ar": [
+          "BysP6jfMwC3oxZ5V1XhkG5"
+        ]
+      }
+    }
+  },
+  {
+    "PxVUfYDDFc4u1eSZmWchbE": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Errands",
+        "tp": 1,
+        "ss": 0,
+        "st": 1,
+        "ix": 17,
+        "cd": 1,
+        "md": 1
+      }
+    }
+  },
+  {
+    "DroYyo6sWeoTTptEhvujSL": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Area task",
+        "tp": 0,
+        "ss": 0,
+        "st": 1,
+        "ix": 20,
+        "cd": 1,
+        "md": 1,
+        "ar": [
+          "BysP6jfMwC3oxZ5V1XhkG5"
+        ]
+      }
+    }
+  },
+  {
+    "AEbMunFp1tKtDDKeCZRfYG": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Project-only task 1",
+        "tp": 0,
+        "ss": 0,
+        "st": 1,
+        "ix": 25,
+        "cd": 1,
+        "md": 1,
+        "pr": [
+          "PxVUfYDDFc4u1eSZmWchbE"
+        ]
+      }
+    }
+  },
+  {
+    "JMzdPZU6GjAo3t8Kv65yd3": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Project-only task 2",
+        "tp": 0,
+        "ss": 0,
+        "st": 1,
+        "ix": 26,
+        "cd": 1,
+        "md": 1,
+        "pr": [
+          "PxVUfYDDFc4u1eSZmWchbE"
+        ]
+      }
+    }
+  },
+  {
+    "EeCGL1gUEjzZ2mhpkisQTr": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Project task 1",
+        "tp": 0,
+        "ss": 0,
+        "st": 1,
+        "ix": 30,
+        "cd": 1,
+        "md": 1,
+        "pr": [
+          "CrCGsRA8fLpfNNqeBoNme9"
+        ]
+      }
+    }
+  },
+  {
+    "FeTaRwEjjneQ8BUDn2nAQj": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Project task 2",
+        "tp": 0,
+        "ss": 0,
+        "st": 1,
+        "ix": 40,
+        "cd": 1,
+        "md": 1,
+        "pr": [
+          "CrCGsRA8fLpfNNqeBoNme9"
+        ]
+      }
+    }
+  },
+  {
+    "GfzXEfoV8XyUgdJ7qAPRjz": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Project task 3",
+        "tp": 0,
+        "ss": 0,
+        "st": 1,
+        "ix": 50,
+        "cd": 1,
+        "md": 1,
+        "pr": [
+          "CrCGsRA8fLpfNNqeBoNme9"
+        ]
+      }
+    }
+  },
+  {
+    "HLTaMTcCgy9Mw7p1GCkQax": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Project task 4 (hidden)",
+        "tp": 0,
+        "ss": 0,
+        "st": 1,
+        "ix": 60,
+        "cd": 1,
+        "md": 1,
+        "pr": [
+          "CrCGsRA8fLpfNNqeBoNme9"
+        ]
+      }
+    }
+  }
+]

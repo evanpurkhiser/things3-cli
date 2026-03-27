@@ -1,0 +1,14 @@
+```trycmd
+$ run.sh things3 inbox --detailed
+⬓ Inbox  (2 tasks)
+
+  T ▢ Plan weekend trip
+    │ Book train
+    └ Pack light
+  5 ▢ Grocery prep
+    │ For taco night
+    │
+  B ├╴○ Tortillas
+  L └╴● Salsa
+
+```

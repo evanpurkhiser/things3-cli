@@ -1,0 +1,8 @@
+```trycmd
+$ run.sh things3 find --project Alpha --project Beta
+⌗ Find  (2 tasks)
+
+  A ▢ Alpha task  · Alpha Project
+  B ▢ Beta task  · Beta Project
+
+```

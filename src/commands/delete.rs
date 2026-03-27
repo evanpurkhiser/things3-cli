@@ -135,6 +135,8 @@ impl Command for DeleteArgs {
 mod tests {
     use super::*;
     use crate::store::{fold_items, ThingsStore};
+    use crate::wire::area::AreaProps;
+    use crate::wire::task::{TaskProps, TaskStart, TaskStatus, TaskType};
 
     const TASK_A: &str = "A7h5eCi24RvAWKC3Hv3muf";
     const TASK_B: &str = "KGvAPpMrzHAKMdgMiERP1V";
@@ -153,16 +155,17 @@ mod tests {
             uuid.to_string(),
             WireObject::create(
                 EntityType::Task6,
-                BTreeMap::from([
-                    ("tt".to_string(), serde_json::json!(title)),
-                    ("tp".to_string(), serde_json::json!(0)),
-                    ("ss".to_string(), serde_json::json!(0)),
-                    ("st".to_string(), serde_json::json!(0)),
-                    ("tr".to_string(), serde_json::json!(trashed)),
-                    ("ix".to_string(), serde_json::json!(0)),
-                    ("cd".to_string(), serde_json::json!(1)),
-                    ("md".to_string(), serde_json::json!(1)),
-                ]),
+                TaskProps {
+                    title: title.to_string(),
+                    item_type: TaskType::Todo,
+                    status: TaskStatus::Incomplete,
+                    start_location: TaskStart::Inbox,
+                    sort_index: 0,
+                    trashed,
+                    creation_date: Some(1.0),
+                    modification_date: Some(1.0),
+                    ..Default::default()
+                },
             ),
         )
     }
@@ -172,10 +175,11 @@ mod tests {
             uuid.to_string(),
             WireObject::create(
                 EntityType::Area3,
-                BTreeMap::from([
-                    ("tt".to_string(), serde_json::json!(title)),
-                    ("ix".to_string(), serde_json::json!(0)),
-                ]),
+                AreaProps {
+                    title: title.to_string(),
+                    sort_index: 0,
+                    ..Default::default()
+                },
             ),
         )
     }

@@ -1,0 +1,13 @@
+```trycmd
+$ run.sh things3 projects
+● Projects  (3)
+
+  P ◯ Unsorted Project
+
+  L Home
+    G ◯ Kitchen Refresh
+
+  A Work
+    N ◯ Q2 Planning
+
+```

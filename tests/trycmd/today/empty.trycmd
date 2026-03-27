@@ -1,0 +1,5 @@
+```trycmd
+$ run.sh things3 --today-ts 1774396800 today
+No tasks for today.
+
+```

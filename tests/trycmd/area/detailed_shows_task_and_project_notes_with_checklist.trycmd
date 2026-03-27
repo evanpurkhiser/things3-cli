@@ -1,0 +1,16 @@
+```trycmd
+$ run.sh things3 area U8aRJPUWBUpxdLHYMfeACH --detailed
+◆ Personal  (1 project, 1 task)
+
+  8 ▢ Plan weekend
+    │ Book hotel
+    │ Pack bags
+    │
+  F ├╴○ Charge camera
+  T └╴● Print tickets
+
+  9 ◯ Spring cleaning
+    │ Closet first
+    └ Then garage
+
+```

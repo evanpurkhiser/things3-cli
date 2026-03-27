@@ -1,0 +1,12 @@
+```trycmd
+$ run.sh things3 project D --detailed
+● Conference Trip  (0/1)
+
+  G ▢ Finalize packing
+    │ Bring carry-on only
+    │ Charge battery pack
+    │
+  9 ├╴○ Passport
+  S └╴● Headphones
+
+```

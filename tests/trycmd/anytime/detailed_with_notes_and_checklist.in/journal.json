@@ -1,0 +1,54 @@
+[
+  {
+    "6aXZoaKdhWbtkVDjkjSh6t": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Prepare trip plan",
+        "tp": 0,
+        "ss": 0,
+        "st": 1,
+        "ix": 10,
+        "cd": 1,
+        "md": 1,
+        "nt": {
+          "_t": "tx",
+          "t": 1,
+          "v": "Book train tickets\nPack carry-on only"
+        }
+      }
+    }
+  },
+  {
+    "LK55LNQ2Th3Tdx2qi161pM": {
+      "t": 0,
+      "e": "ChecklistItem3",
+      "p": {
+        "tt": "Confirm passport expiry",
+        "ts": [
+          "6aXZoaKdhWbtkVDjkjSh6t"
+        ],
+        "ss": 0,
+        "ix": 1,
+        "cd": 1,
+        "md": 1
+      }
+    }
+  },
+  {
+    "CwqFCJUboRLmL8E2D7J24f": {
+      "t": 0,
+      "e": "ChecklistItem3",
+      "p": {
+        "tt": "Download offline maps",
+        "ts": [
+          "6aXZoaKdhWbtkVDjkjSh6t"
+        ],
+        "ss": 3,
+        "ix": 2,
+        "cd": 1,
+        "md": 1
+      }
+    }
+  }
+]

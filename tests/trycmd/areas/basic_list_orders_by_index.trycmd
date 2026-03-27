@@ -1,0 +1,9 @@
+```trycmd
+$ run.sh things3 areas
+◆ Areas  (3)
+
+  A ◆ Home
+  D ◆ Errands
+  T ◆ Work
+
+```

@@ -2,11 +2,10 @@ use crate::app::Cli;
 use crate::commands::Command;
 use crate::common::{colored, resolve_single_tag, BOLD, DIM, GREEN, ICONS};
 use crate::ids::ThingsId;
-use crate::wire::tags::TagPatch;
-use crate::wire::wire_object::{EntityType, OperationType, Properties, WireObject};
+use crate::wire::tags::{TagPatch, TagProps};
+use crate::wire::wire_object::{EntityType, WireObject};
 use anyhow::Result;
 use clap::{Args, Subcommand};
-use serde_json::json;
 use std::collections::{BTreeMap, HashMap};
 use std::io::Write;
 
@@ -225,10 +224,11 @@ impl Command for TagsArgs {
                 }
 
                 let store = cli.load_store()?;
-                let mut props = BTreeMap::new();
-                props.insert("tt".to_string(), json!(name));
-                props.insert("ix".to_string(), json!(0));
-                props.insert("xx".to_string(), json!({"_t":"oo","sn":{}}));
+                let mut props = TagProps {
+                    title: name.to_string(),
+                    sort_index: 0,
+                    ..Default::default()
+                };
 
                 if let Some(parent_raw) = &args.parent {
                     let (parent, err) = resolve_single_tag(&store, parent_raw);
@@ -236,19 +236,12 @@ impl Command for TagsArgs {
                         eprintln!("{err}");
                         return Ok(());
                     };
-                    props.insert("pn".to_string(), json!([parent.uuid]));
+                    props.parent_ids = vec![parent.uuid.into()];
                 }
 
                 let uuid = ctx.next_id();
                 let mut changes = BTreeMap::new();
-                changes.insert(
-                    uuid.clone(),
-                    WireObject {
-                        operation_type: OperationType::Create,
-                        entity_type: Some(EntityType::Tag4),
-                        payload: Properties::Unknown(props),
-                    },
-                );
+                changes.insert(uuid.clone(), WireObject::create(EntityType::Tag4, props));
                 if let Err(e) = ctx.commit_changes(changes, None) {
                     eprintln!("Failed to create tag: {e}");
                     return Ok(());
@@ -275,11 +268,7 @@ impl Command for TagsArgs {
                 let mut changes = BTreeMap::new();
                 changes.insert(
                     plan.tag.uuid.to_string(),
-                    WireObject {
-                        operation_type: OperationType::Update,
-                        entity_type: Some(EntityType::Tag4),
-                        payload: Properties::Unknown(plan.update.clone().into_properties()),
-                    },
+                    WireObject::update(EntityType::Tag4, plan.update.clone()),
                 );
                 if let Err(e) = ctx.commit_changes(changes, None) {
                     eprintln!("Failed to edit tag: {e}");
@@ -335,9 +324,12 @@ impl Command for TagsArgs {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ids::ThingsId;
     use crate::store::{fold_items, ThingsStore};
+    use crate::wire::tags::TagProps;
     use crate::wire::wire_object::WireItem;
-    use crate::wire::wire_object::{EntityType, OperationType, WireObject};
+    use crate::wire::wire_object::{EntityType, WireObject};
+    use serde_json::json;
 
     const NOW: f64 = 1_700_000_222.0;
     const TAG_UUID: &str = "WukwpDdL5Z88nX3okGMKTC";
@@ -352,20 +344,17 @@ mod tests {
     }
 
     fn tag(uuid: &str, title: &str, parent: Option<&str>) -> (String, WireObject) {
-        let mut props = BTreeMap::from([
-            ("tt".to_string(), json!(title)),
-            ("ix".to_string(), json!(0)),
-        ]);
-        if let Some(parent) = parent {
-            props.insert("pn".to_string(), json!([parent]));
-        }
         (
             uuid.to_string(),
-            WireObject {
-                operation_type: OperationType::Create,
-                entity_type: Some(EntityType::Tag4),
-                payload: Properties::Unknown(props),
-            },
+            WireObject::create(
+                EntityType::Tag4,
+                TagProps {
+                    title: title.to_string(),
+                    sort_index: 0,
+                    parent_ids: parent.map(|p| vec![ThingsId::from(p)]).unwrap_or_default(),
+                    ..Default::default()
+                },
+            ),
         )
     }
 

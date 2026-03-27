@@ -1,0 +1,15 @@
+```trycmd
+$ TRYCMD_MUTATION_LOG=1 TRYCMD_PRETTY_DEBUG_JSON=1 run.sh things3 --today-ts 1699920000 delete A7h5eCi24RvAWKC3Hv3muf
+× Deleted Alpha  A7h5eCi24RvAWKC3Hv3muf
+{
+  "ancestor_index": 0,
+  "changes": {
+    "A7h5eCi24RvAWKC3Hv3muf": {
+      "e": "Task6",
+      "p": {},
+      "t": 2
+    }
+  }
+}
+
+```

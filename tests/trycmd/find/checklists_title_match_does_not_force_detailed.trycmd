@@ -1,0 +1,7 @@
+```trycmd
+$ run.sh things3 find dentist --checklists
+⌗ Find  (1 task)
+
+  A ▢ dentist task
+
+```

@@ -1,6 +1,7 @@
 use crate::store::{fold_item, RawState};
+use crate::wire::task::{TaskPatch, TaskStatus};
 use crate::wire::wire_object::WireItem;
-use crate::wire::wire_object::{EntityType, OperationType, Properties, WireObject};
+use crate::wire::wire_object::{EntityType, WireObject};
 use anyhow::{anyhow, Context, Result};
 use reqwest::blocking::Client;
 use serde_json::{json, Value};
@@ -205,19 +206,21 @@ impl ThingsCloudClient {
         entity: Option<String>,
         stop_date: Option<f64>,
     ) -> Result<i64> {
-        let mut props = BTreeMap::new();
-        props.insert("ss".to_string(), json!(status));
-        props.insert("sp".to_string(), serde_json::to_value(stop_date)?);
-        props.insert("md".to_string(), json!(now_ts()));
-
+        let entity_type = entity
+            .map(|e| EntityType::from(e))
+            .unwrap_or(EntityType::Task6);
         let mut changes = BTreeMap::new();
         changes.insert(
             task_uuid.to_string(),
-            WireObject {
-                operation_type: OperationType::Update,
-                entity_type: entity.map(EntityType::from),
-                payload: Properties::Unknown(props),
-            },
+            WireObject::update(
+                entity_type,
+                TaskPatch {
+                    status: Some(TaskStatus::from(status)),
+                    stop_date: Some(stop_date),
+                    modification_date: Some(now_ts()),
+                    ..Default::default()
+                },
+            ),
         );
         self.commit(changes, None)
     }

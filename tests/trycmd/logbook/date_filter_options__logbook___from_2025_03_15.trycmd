@@ -1,0 +1,9 @@
+```trycmd
+$ run.sh things3 logbook --from 2025-03-15
+✓ Logbook  (2 tasks)
+
+  2025-03-15
+    M ◼ Ship release
+    N ☒ Skip sync
+
+```

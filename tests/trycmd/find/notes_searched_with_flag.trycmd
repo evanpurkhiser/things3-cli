@@ -1,0 +1,8 @@
+```trycmd
+$ run.sh things3 find dentist --notes
+⌗ Find  (2 tasks)
+
+  A ▢ Task A
+  B ▢ dentist appointment
+
+```

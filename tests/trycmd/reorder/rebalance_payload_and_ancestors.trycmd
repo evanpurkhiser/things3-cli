@@ -1,0 +1,31 @@
+```trycmd
+$ TRYCMD_MUTATION_LOG=1 TRYCMD_PRETTY_DEBUG_JSON=1 run.sh things3 --today-ts 1699920000 --now-ts 1700000444.0 reorder MpkEei6ybkFS2n6SXvwfLf --after-id A7h5eCi24RvAWKC3Hv3muf
+✓ Reordered C  MpkEei6ybkFS2n6SXvwfLf (after=A, index=2048)
+{
+  "ancestor_index": 0,
+  "changes": {
+    "MpkEei6ybkFS2n6SXvwfLf": {
+      "e": "Task6",
+      "p": {
+        "ix": 2048,
+        "md": 1700000444.0
+      },
+      "t": 1
+    }
+  }
+}
+{
+  "ancestor_index": 1,
+  "changes": {
+    "KGvAPpMrzHAKMdgMiERP1V": {
+      "e": "Task6",
+      "p": {
+        "ix": 3072,
+        "md": 1700000444.0
+      },
+      "t": 1
+    }
+  }
+}
+
+```
