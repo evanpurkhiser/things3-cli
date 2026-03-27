@@ -1,4 +1,5 @@
 use crate::ids::ThingsId;
+use crate::wire::deserialize_optional_field;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -43,7 +44,12 @@ pub struct TagPatch {
     pub modification_date: Option<f64>,
 
     /// `sh`: shortcut.
-    #[serde(rename = "sh", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "sh",
+        default,
+        deserialize_with = "deserialize_optional_field",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub shortcut: Option<Option<String>>,
 
     /// `ix`: sort index.

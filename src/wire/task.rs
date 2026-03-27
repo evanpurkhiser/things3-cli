@@ -1,4 +1,5 @@
 use crate::ids::ThingsId;
+use crate::wire::deserialize_optional_field;
 use crate::wire::notes::TaskNotes;
 use crate::wire::recurrence::RecurrenceRule;
 use num_enum::{FromPrimitive, IntoPrimitive};
@@ -155,11 +156,21 @@ pub struct TaskPatch {
     pub start_location: Option<TaskStart>,
 
     /// `sr`: scheduled day timestamp (`null` clears date).
-    #[serde(rename = "sr", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "sr",
+        default,
+        deserialize_with = "deserialize_optional_field",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub scheduled_date: Option<Option<i64>>,
 
     /// `tir`: today reference day timestamp (`null` clears today placement).
-    #[serde(rename = "tir", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "tir",
+        default,
+        deserialize_with = "deserialize_optional_field",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub today_index_reference: Option<Option<i64>>,
 
     /// `pr`: parent project IDs.
@@ -191,11 +202,21 @@ pub struct TaskPatch {
     pub status: Option<TaskStatus>,
 
     /// `sp`: completion/cancellation timestamp.
-    #[serde(rename = "sp", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "sp",
+        default,
+        deserialize_with = "deserialize_optional_field",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub stop_date: Option<Option<f64>>,
 
     /// `dd`: deadline timestamp.
-    #[serde(rename = "dd", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "dd",
+        default,
+        deserialize_with = "deserialize_optional_field",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub deadline: Option<Option<f64>>,
 
     /// `ix`: sort index.
@@ -207,7 +228,12 @@ pub struct TaskPatch {
     pub today_sort_index: Option<i32>,
 
     /// `rr`: recurrence rule.
-    #[serde(rename = "rr", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "rr",
+        default,
+        deserialize_with = "deserialize_optional_field",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub recurrence_rule: Option<Option<RecurrenceRule>>,
 
     /// `rt`: recurrence template IDs.
@@ -227,7 +253,12 @@ pub struct TaskPatch {
     pub trashed: Option<bool>,
 
     /// `cd`: creation timestamp.
-    #[serde(rename = "cd", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "cd",
+        default,
+        deserialize_with = "deserialize_optional_field",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub creation_date: Option<Option<f64>>,
 
     /// `md`: modification timestamp.

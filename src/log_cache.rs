@@ -16,9 +16,13 @@ struct CursorData {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 struct StateCacheData {
+    #[serde(default)]
+    version: u8,
     log_offset: u64,
     state: RawState,
 }
+
+const STATE_CACHE_VERSION: u8 = 2;
 
 fn read_cursor(path: &Path) -> CursorData {
     if !path.exists() {
@@ -131,12 +135,17 @@ fn read_state_cache(cache_dir: &Path) -> (RawState, u64) {
         return (RawState::new(), 0);
     };
 
+    if cache.version != STATE_CACHE_VERSION {
+        return (RawState::new(), 0);
+    }
+
     (cache.state, cache.log_offset)
 }
 
 fn write_state_cache(cache_dir: &Path, state: &RawState, log_offset: u64) -> Result<()> {
     let path = cache_dir.join("state_cache.json");
     let payload = serde_json::to_string(&StateCacheData {
+        version: STATE_CACHE_VERSION,
         log_offset,
         state: state.clone(),
     })?;

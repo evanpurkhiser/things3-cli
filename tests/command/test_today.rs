@@ -6,3 +6,4 @@ fixture_test!(test_today_detailed_with_notes_and_checklist);
 fixture_test!(test_today_empty);
 fixture_test!(test_today_evening_section_split);
 fixture_test!(test_today_marks_staged_someday_items);
+fixture_test!(test_today_respects_null_patch_clearing_schedule_fields);

@@ -3,7 +3,8 @@ mod tests {
     use crate::ids::ThingsId;
     use crate::wire::checklist::ChecklistItemProps;
     use crate::wire::recurrence::{FrequencyUnit, RecurrenceRule};
-    use crate::wire::task::{TaskProps, TaskStart, TaskStatus};
+    use crate::wire::tags::TagPatch;
+    use crate::wire::task::{TaskPatch, TaskProps, TaskStart, TaskStatus};
     use crate::wire::wire_object::WireItem;
     use crate::wire::wire_object::{EntityType, OperationType, Properties, WireObject};
 
@@ -148,5 +149,52 @@ mod tests {
             serde_json::from_str(r#"{"t":2,"e":"Task6","p":{}}"#).expect("deserialize");
         let typed = parsed.properties().expect("typed properties");
         assert!(matches!(typed, Properties::Delete));
+    }
+
+    #[test]
+    fn task_patch_preserves_explicit_null_for_clearable_fields() {
+        let patch: TaskPatch = serde_json::from_str(r#"{"sr":null,"tir":null,"sp":null}"#)
+            .expect("deserialize patch with nulls");
+
+        assert_eq!(patch.scheduled_date, Some(None));
+        assert_eq!(patch.today_index_reference, Some(None));
+        assert_eq!(patch.stop_date, Some(None));
+    }
+
+    #[test]
+    fn task_update_wire_object_keeps_null_clears() {
+        let parsed: WireObject =
+            serde_json::from_str(r#"{"t":1,"e":"Task6","p":{"sr":null,"tir":null}}"#)
+                .expect("deserialize wire update");
+
+        let typed = parsed.properties().expect("typed properties");
+        match typed {
+            Properties::TaskUpdate(patch) => {
+                assert_eq!(patch.scheduled_date, Some(None));
+                assert_eq!(patch.today_index_reference, Some(None));
+            }
+            other => panic!("unexpected variant: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn tag_patch_preserves_explicit_null_for_shortcut() {
+        let patch: TagPatch =
+            serde_json::from_str(r#"{"sh":null}"#).expect("deserialize tag patch with null");
+        assert_eq!(patch.shortcut, Some(None));
+    }
+
+    #[test]
+    fn tag_update_wire_object_keeps_null_shortcut_clear() {
+        let parsed: WireObject = serde_json::from_str(r#"{"t":1,"e":"Tag4","p":{"sh":null}}"#)
+            .expect("deserialize tag wire update");
+
+        let typed = parsed.properties().expect("typed properties");
+        match typed {
+            Properties::TagUpdate(patch) => {
+                assert_eq!(patch.shortcut, Some(None));
+            }
+            other => panic!("unexpected variant: {other:?}"),
+        }
     }
 }
