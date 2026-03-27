@@ -1,5 +1,7 @@
 use crate::auth::load_auth;
 use crate::client::ThingsCloudClient;
+use crate::dirs::append_log_dir;
+use crate::log_cache::read_cached_head_index;
 use crate::wire::wire_object::WireObject;
 use anyhow::Result;
 use serde_json::json;
@@ -102,6 +104,7 @@ impl LiveCloudWriter {
         let (email, password) = load_auth()?;
         let mut client = ThingsCloudClient::new(email, password)?;
         let _ = client.authenticate();
+        client.head_index = read_cached_head_index(&append_log_dir());
         Ok(Self { client })
     }
 }

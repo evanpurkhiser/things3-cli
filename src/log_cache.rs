@@ -1,7 +1,7 @@
 use crate::client::ThingsCloudClient;
-use crate::store::{RawState, fold_item};
+use crate::store::{fold_item, RawState};
 use crate::wire::wire_object::WireItem;
-use anyhow::{Context, Result, anyhow};
+use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs::{self, File, OpenOptions};
@@ -12,6 +12,8 @@ use std::path::{Path, PathBuf};
 struct CursorData {
     next_start_index: i64,
     history_key: String,
+    #[serde(default)]
+    head_index: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -34,10 +36,16 @@ fn read_cursor(path: &Path) -> CursorData {
     serde_json::from_str(&raw).unwrap_or_default()
 }
 
-fn write_cursor(path: &Path, next_start_index: i64, history_key: &str) -> Result<()> {
+fn write_cursor(
+    path: &Path,
+    next_start_index: i64,
+    history_key: &str,
+    head_index: i64,
+) -> Result<()> {
     let payload = serde_json::to_string(&serde_json::json!({
         "next_start_index": next_start_index,
         "history_key": history_key,
+        "head_index": head_index,
         "updated_at": crate::client::now_timestamp(),
     }))?;
     let tmp = path.with_extension("tmp");
@@ -106,6 +114,7 @@ pub fn sync_append_log(client: &mut ThingsCloudClient, cache_dir: &Path) -> Resu
                 &cursor_path,
                 start_index,
                 client.history_key.as_deref().unwrap_or_default(),
+                client.head_index,
             )?;
         }
 
@@ -114,10 +123,14 @@ pub fn sync_append_log(client: &mut ThingsCloudClient, cache_dir: &Path) -> Resu
         }
     }
 
-    if let Some(history_key) = client.history_key.as_deref()
-        && history_key != cursor.history_key
-    {
-        write_cursor(&cursor_path, start_index, history_key)?;
+    let current_history_key = client.history_key.clone().unwrap_or_default();
+    if current_history_key != cursor.history_key || client.head_index != cursor.head_index {
+        write_cursor(
+            &cursor_path,
+            start_index,
+            &current_history_key,
+            client.head_index,
+        )?;
     }
 
     Ok(())
@@ -204,6 +217,10 @@ pub fn get_state_with_append_log(
 
 pub fn fold_state_from_append_log_or_empty(cache_dir: &Path) -> RawState {
     fold_state_from_append_log(cache_dir).unwrap_or_default()
+}
+
+pub fn read_cached_head_index(cache_dir: &Path) -> i64 {
+    read_cursor(&cache_dir.join("cursor.json")).head_index
 }
 
 pub fn sync_append_log_or_err(client: &mut ThingsCloudClient, cache_dir: &Path) -> Result<()> {
