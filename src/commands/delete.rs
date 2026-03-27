@@ -185,7 +185,7 @@ mod tests {
     }
 
     #[test]
-    fn delete_payloads_match_python_cases() {
+    fn delete_payloads_match_snapshot_cases() {
         let single = build_delete_plan(
             &DeleteArgs {
                 item_ids: vec![IdentifierToken::from(TASK_A)],
