@@ -1,11 +1,12 @@
 [package]
-name = "things3-cli"
+name = "things3-cloud"
 version = "0.1.0"
 edition = "2024"
 autobins = false
 description = "Command-line client for Things 3 using the Things Cloud API"
 license = "MIT"
-repository = "https://github.com/evanpurkhiser/things3-cli"
+repository = "https://github.com/evanpurkhiser/things3-cloud"
+homepage = "https://github.com/evanpurkhiser/things3-cloud"
 readme = "README.md"
 keywords = ["cli", "things3", "productivity"]
 categories = ["command-line-utilities"]

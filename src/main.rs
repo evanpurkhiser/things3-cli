@@ -1,5 +1,5 @@
 fn main() {
-    if let Err(err) = things3_cli::app::run() {
+    if let Err(err) = things3_cloud::app::run() {
         eprintln!("{err}");
         std::process::exit(1);
     }
@@ -28,6 +28,7 @@ mod tests {
     fn things3_bin_path() -> std::path::PathBuf {
         for env_var in [
             "CARGO_BIN_EXE_things3",
+            "CARGO_BIN_EXE_things3-cloud",
             "CARGO_BIN_EXE_things3-cli",
             "CARGO_BIN_EXE_things-cli",
         ] {

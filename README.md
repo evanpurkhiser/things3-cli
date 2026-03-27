@@ -1,6 +1,6 @@
 # things3
 
-[![Tests](https://github.com/evanpurkhiser/things3-cli/actions/workflows/tests.yml/badge.svg)](https://github.com/evanpurkhiser/things3-cli/actions/workflows/tests.yml)
+[![Tests](https://github.com/evanpurkhiser/things3-cloud/actions/workflows/tests.yml/badge.svg)](https://github.com/evanpurkhiser/things3-cloud/actions/workflows/tests.yml)
 
 A Rust command-line client for [Things 3](https://culturedcode.com/things/) that talks
 directly to the Things Cloud API.
@@ -16,7 +16,7 @@ cargo install --path .
 From GitHub:
 
 ```bash
-cargo install --git https://github.com/evanpurkhiser/things3-cli
+cargo install --git https://github.com/evanpurkhiser/things3-cloud
 ```
 
 ## Build
