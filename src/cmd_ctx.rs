@@ -1,4 +1,5 @@
-use crate::cloud_writer::{CloudWriter, LiveCloudWriter};
+use crate::app::Cli;
+use crate::cloud_writer::{CloudWriter, DryRunCloudWriter, LiveCloudWriter, LoggingCloudWriter};
 use crate::ids::ThingsId;
 use crate::wire::wire_object::WireObject;
 use anyhow::Result;
@@ -29,13 +30,26 @@ pub trait CmdCtx {
 
 #[derive(Default)]
 pub struct DefaultCmdCtx {
+    no_cloud: bool,
     writer: Option<Box<dyn CloudWriter>>,
 }
 
 impl DefaultCmdCtx {
+    pub fn from_cli(cli: &Cli) -> Self {
+        Self {
+            no_cloud: cli.no_cloud,
+            writer: None,
+        }
+    }
+
     fn writer_mut(&mut self) -> Result<&mut dyn CloudWriter> {
         if self.writer.is_none() {
-            self.writer = Some(Box::new(LiveCloudWriter::new()?));
+            let inner: Box<dyn CloudWriter> = if self.no_cloud {
+                Box::new(DryRunCloudWriter::new())
+            } else {
+                Box::new(LiveCloudWriter::new()?)
+            };
+            self.writer = Some(Box::new(LoggingCloudWriter::new(inner)));
         }
         Ok(self.writer.as_deref_mut().expect("writer initialized"))
     }

@@ -1,6 +1,7 @@
 use crate::commands::{Command, Commands};
 use crate::dirs::append_log_dir;
 use crate::log_cache::{fold_state_from_append_log, get_state_with_append_log};
+use crate::logging;
 use crate::store::{fold_items, RawState, ThingsStore};
 use crate::wire::wire_object::WireItem;
 use crate::{auth::load_auth, client::ThingsCloudClient};
@@ -20,6 +21,15 @@ pub struct Cli {
     /// Skip cloud sync and use local cache only
     #[arg(long)]
     pub no_sync: bool,
+    /// For testing: disable cloud sync and cloud writes
+    #[arg(long, hide = true)]
+    pub no_cloud: bool,
+    /// Set the log level filter
+    #[arg(long, global = true, value_enum, default_value_t = logging::Level::Info)]
+    pub log_level: logging::Level,
+    /// Set the logging output format
+    #[arg(long, global = true, value_enum, default_value_t = logging::LogFormat::Auto)]
+    pub log_format: logging::LogFormat,
     /// For testing: load state from a JSON journal file instead of syncing.
     /// The file must contain a JSON array of WireItem objects (each is a
     /// map of uuid -> WireObject).
@@ -40,15 +50,15 @@ impl Cli {
             return Ok(fold_items(items));
         }
 
+        if self.no_sync || self.no_cloud {
+            let cache_dir = append_log_dir();
+            return fold_state_from_append_log(&cache_dir);
+        }
+
         let (email, password) = load_auth()?;
         let mut client = ThingsCloudClient::new(email, password)?;
         let cache_dir = append_log_dir();
-
-        if self.no_sync {
-            fold_state_from_append_log(&cache_dir)
-        } else {
-            get_state_with_append_log(&mut client, cache_dir)
-        }
+        get_state_with_append_log(&mut client, cache_dir)
     }
 
     pub fn load_store(&self) -> Result<ThingsStore> {
@@ -59,6 +69,7 @@ impl Cli {
 
 pub fn run() -> Result<()> {
     let mut cli = Cli::parse();
+    logging::init(cli.log_level, cli.log_format);
     let command = cli
         .command
         .take()
