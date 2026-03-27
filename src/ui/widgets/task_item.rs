@@ -2,11 +2,12 @@ use crate::common::ICONS;
 use crate::store::{Task, ThingsStore};
 use crate::ui::widgets::checklist::ChecklistWidget;
 use crate::ui::widgets::left_border::LeftBorderWidget;
+use crate::ui::widgets::task_line::TaskLine;
 use chrono::{DateTime, Utc};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::Widget,
 };
@@ -42,6 +43,8 @@ pub struct TaskItemWidget<'a> {
     pub store: &'a ThingsStore,
     /// Show project name as a suffix.
     pub show_project: bool,
+    /// Show area name as a suffix.
+    pub show_area: bool,
     /// Show ⭑/☽ today/evening markers.
     pub show_today_markers: bool,
     /// Show ● staged-for-today marker.
@@ -82,66 +85,17 @@ impl<'a> TaskItemWidget<'a> {
         // Checkbox
         Span::styled(self.checkbox_str(), Self::dim()).render(checkbox_col, buf);
 
-        // Content: build a Line of spans for markers + title + tags + deadline
-        let mut spans: Vec<Span> = Vec::new();
-
-        // Optional today/evening/staged marker
-        if self.show_today_markers {
-            if self.task.evening {
-                spans.push(Span::styled(ICONS.evening, Color::Blue));
-                spans.push(Span::raw(" "));
-            } else if self.task.is_today(self.today) {
-                spans.push(Span::styled(ICONS.today, Color::Yellow));
-                spans.push(Span::raw(" "));
-            }
-        } else if self.show_staged_today_marker && self.task.is_staged_for_today(self.today) {
-            spans.push(Span::styled(ICONS.today_staged, Color::Yellow));
-            spans.push(Span::raw(" "));
+        let spans = TaskLine {
+            task: self.task,
+            store: self.store,
+            today: self.today,
+            show_today_markers: self.show_today_markers,
+            show_staged_today_marker: self.show_staged_today_marker,
+            show_tags: true,
+            show_project: self.show_project,
+            show_area: self.show_area,
         }
-
-        // Title
-        if self.task.title.is_empty() {
-            spans.push(Span::styled("(untitled)", Self::dim()));
-        } else {
-            spans.push(Span::raw(self.task.title.clone()));
-        }
-
-        // Tags
-        if !self.task.tags.is_empty() {
-            let tag_names: Vec<String> = self
-                .task
-                .tags
-                .iter()
-                .map(|t| self.store.resolve_tag_title(t))
-                .collect();
-            spans.push(Span::styled(
-                format!(" [{}]", tag_names.join(", ")),
-                Self::dim(),
-            ));
-        }
-
-        // Project
-        if self.show_project {
-            if let Some(proj) = self.store.effective_project_uuid(self.task) {
-                let title = self.store.resolve_project_title(&proj);
-                spans.push(Span::styled(
-                    format!(" {} {}", ICONS.separator, title),
-                    Self::dim(),
-                ));
-            }
-        }
-
-        // Deadline
-        if let Some(deadline) = self.task.deadline {
-            let date_str = deadline.format("%Y-%m-%d").to_string();
-            let dl_style = if deadline < *self.today {
-                Style::from(Color::Red)
-            } else {
-                Style::from(Color::Yellow)
-            };
-            spans.push(Span::raw(format!(" {} due by ", ICONS.deadline)));
-            spans.push(Span::styled(date_str, dl_style));
-        }
+        .spans();
 
         Line::from(spans).render(content_col, buf);
     }
@@ -180,9 +134,11 @@ impl<'a> TaskItemWidget<'a> {
             border_children.push(Line::default());
         }
 
-        // The rail must extend through the checklist rows so │ is drawn there
-        // too (checklist connectors ├╴/└╴ overwrite those cells).
-        let rail_height = border_children.len() as u16 + checklist.len() as u16;
+        let rail_height = if has_checklist && !border_children.is_empty() {
+            border_children.len() as u16 + 1
+        } else {
+            border_children.len() as u16
+        };
 
         if rail_height > 0 {
             LeftBorderWidget {
@@ -197,31 +153,15 @@ impl<'a> TaskItemWidget<'a> {
             let notes_and_spacer_height =
                 note_lines.len() as u16 + if has_notes && has_checklist { 1 } else { 0 };
 
-            // Align checklist IDs under the task ID column.
-            //
-            // `id_prefix_len` is the task ID column width (id chars).
-            // The task id col occupies `id_prefix_len + 1` cells (id + space).
-            // ChecklistWidget will draw its own id col of `cl_id_col` cells.
-            // If they differ, shift cl_area right by the gap so the connector
-            // `├╴` always lands in the same column as the task checkbox.
-            let task_id_col = if show_ids {
-                self.id_prefix_len as u16 + 1
-            } else {
-                0
-            };
             let cl_id_col = ChecklistWidget::id_col_width(checklist, show_ids);
-            let x_offset = task_id_col.saturating_sub(cl_id_col);
 
             let cl_area = Rect {
                 // Detail area lives in the content column. Shift checklist left
                 // so its id column can extend into the task-id column when the
                 // task-id width is larger than the checklist-id width.
-                x: area.x.saturating_sub(cl_id_col) + x_offset,
+                x: area.x.saturating_sub(cl_id_col),
                 y: area.y + notes_and_spacer_height,
-                width: area
-                    .width
-                    .saturating_add(cl_id_col)
-                    .saturating_sub(x_offset),
+                width: area.width.saturating_add(cl_id_col),
                 height: checklist.len() as u16,
             };
             ChecklistWidget {

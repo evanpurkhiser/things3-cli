@@ -1,5 +1,10 @@
+pub mod area_header;
 pub mod checklist;
 pub mod checklist_item;
 pub mod left_border;
+pub mod project_header;
 pub mod project_item;
+pub mod task_group;
+pub mod task_line;
 pub mod task_item;
+pub mod tasks;

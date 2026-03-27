@@ -1,0 +1,75 @@
+[
+  {
+    "A7h5eCi24RvAWKC3Hv3muf": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Ship release",
+        "tp": 0,
+        "ss": 0,
+        "st": 1,
+        "ix": 10,
+        "cd": 1,
+        "md": 1,
+        "sr": 1774396800,
+        "tir": 1774396800,
+        "ti": 10,
+        "nt": {
+          "_t": "tx",
+          "t": 1,
+          "v": "Prep checklist"
+        }
+      }
+    }
+  },
+  {
+    "Ab3xKj7NmPqRsTuVwXyZa2": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Write docs",
+        "tp": 0,
+        "ss": 0,
+        "st": 1,
+        "ix": 20,
+        "cd": 1,
+        "md": 1,
+        "sr": 1774396800,
+        "tir": 1774396800,
+        "ti": 20
+      }
+    }
+  },
+  {
+    "MpkEei6ybkFS2n6SXvwfLf": {
+      "t": 0,
+      "e": "ChecklistItem3",
+      "p": {
+        "tt": "Confirm changelog",
+        "ts": [
+          "A7h5eCi24RvAWKC3Hv3muf"
+        ],
+        "ss": 0,
+        "ix": 1,
+        "cd": 1,
+        "md": 1
+      }
+    }
+  },
+  {
+    "JFdhhhp37fpryAKu8UXwzK": {
+      "t": 0,
+      "e": "ChecklistItem3",
+      "p": {
+        "tt": "Tag release commit",
+        "ts": [
+          "A7h5eCi24RvAWKC3Hv3muf"
+        ],
+        "ss": 3,
+        "ix": 2,
+        "cd": 1,
+        "md": 1
+      }
+    }
+  }
+]

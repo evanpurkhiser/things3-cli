@@ -2,11 +2,12 @@ use crate::common::ICONS;
 use crate::ids::ThingsId;
 use crate::store::{Task, ThingsStore};
 use crate::ui::widgets::left_border::LeftBorderWidget;
+use crate::ui::widgets::task_line::TaskLine;
 use chrono::{DateTime, Utc};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::Widget,
 };
@@ -30,6 +31,7 @@ pub struct ProjectItemWidget<'a> {
     pub store: &'a ThingsStore,
     pub show_indicators: bool,
     pub show_staged_today_marker: bool,
+    pub show_area: bool,
     pub id_prefix_len: usize,
     pub detailed: bool,
     pub today: &'a DateTime<Utc>,
@@ -73,40 +75,17 @@ impl<'a> ProjectItemWidget<'a> {
 
         Span::styled(self.progress_marker(), Self::dim()).render(marker_col, buf);
 
-        let mut spans: Vec<Span> = Vec::new();
-
-        // Today/evening/staged marker
-        if self.show_indicators {
-            if self.project.evening {
-                spans.push(Span::styled(ICONS.evening, Color::Blue));
-                spans.push(Span::raw(" "));
-            } else if self.project.is_today(self.today) {
-                spans.push(Span::styled(ICONS.today, Color::Yellow));
-                spans.push(Span::raw(" "));
-            }
-        } else if self.show_staged_today_marker && self.project.is_staged_for_today(self.today) {
-            spans.push(Span::styled(ICONS.today_staged, Color::Yellow));
-            spans.push(Span::raw(" "));
+        let spans = TaskLine {
+            task: self.project,
+            store: self.store,
+            today: self.today,
+            show_today_markers: self.show_indicators,
+            show_staged_today_marker: self.show_staged_today_marker,
+            show_tags: true,
+            show_project: false,
+            show_area: self.show_area,
         }
-
-        // Title
-        if self.project.title.is_empty() {
-            spans.push(Span::styled("(untitled)", Self::dim()));
-        } else {
-            spans.push(Span::raw(self.project.title.clone()));
-        }
-
-        // Deadline
-        if let Some(deadline) = self.project.deadline {
-            let date_str = deadline.format("%Y-%m-%d").to_string();
-            let dl_style = if deadline < *self.today {
-                Style::from(Color::Red)
-            } else {
-                Style::from(Color::Yellow)
-            };
-            spans.push(Span::raw(format!(" {} due by ", ICONS.deadline)));
-            spans.push(Span::styled(date_str, dl_style));
-        }
+        .spans();
 
         Line::from(spans).render(content_col, buf);
     }
