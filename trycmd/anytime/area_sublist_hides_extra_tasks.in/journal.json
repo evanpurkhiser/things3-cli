@@ -1,0 +1,84 @@
+[
+  {
+    "BysP6jfMwC3oxZ5V1XhkG5": {
+      "t": 0,
+      "e": "Area3",
+      "p": {
+        "tt": "Home",
+        "ix": 1
+      }
+    }
+  },
+  {
+    "DroYyo6sWeoTTptEhvujSL": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Area task 1",
+        "tp": 0,
+        "ss": 0,
+        "st": 1,
+        "ix": 10,
+        "cd": 1,
+        "md": 1,
+        "ar": [
+          "BysP6jfMwC3oxZ5V1XhkG5"
+        ]
+      }
+    }
+  },
+  {
+    "EeCGL1gUEjzZ2mhpkisQTr": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Area task 2",
+        "tp": 0,
+        "ss": 0,
+        "st": 1,
+        "ix": 20,
+        "cd": 1,
+        "md": 1,
+        "ar": [
+          "BysP6jfMwC3oxZ5V1XhkG5"
+        ]
+      }
+    }
+  },
+  {
+    "FeTaRwEjjneQ8BUDn2nAQj": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Area task 3",
+        "tp": 0,
+        "ss": 0,
+        "st": 1,
+        "ix": 30,
+        "cd": 1,
+        "md": 1,
+        "ar": [
+          "BysP6jfMwC3oxZ5V1XhkG5"
+        ]
+      }
+    }
+  },
+  {
+    "GfzXEfoV8XyUgdJ7qAPRjz": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Area task 4 (hidden)",
+        "tp": 0,
+        "ss": 0,
+        "st": 1,
+        "ix": 40,
+        "cd": 1,
+        "md": 1,
+        "ar": [
+          "BysP6jfMwC3oxZ5V1XhkG5"
+        ]
+      }
+    }
+  }
+]

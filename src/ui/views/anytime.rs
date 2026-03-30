@@ -191,15 +191,17 @@ pub fn AnytimeView<'a>(hooks: Hooks, props: &AnytimeViewProps<'a>) -> impl Into<
                     entries.push(Entry::Sep);
                 }
 
+                let (shown_area_tasks, hidden_area_tasks) = limited(&area_group.tasks);
+
                 entries.push(Entry::Block(BlockSpec {
                     header: Some(TaskGroupHeader::Area {
                         area_uuid: area_uuid.clone(),
                         title: store.resolve_area_title(area_uuid),
                         id_prefix_len: prefix_len,
                     }),
-                    items: area_group.tasks.iter().map(|&i| &items[i]).collect(),
+                    items: shown_area_tasks.iter().map(|&i| &items[i]).collect(),
                     indent_under_header: 2u16,
-                    hidden_count: 0usize,
+                    hidden_count: hidden_area_tasks,
                     extra_left: 0,
                 }));
 

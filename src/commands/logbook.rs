@@ -1,11 +1,13 @@
 use crate::app::Cli;
 use crate::commands::{Command, DetailedArgs};
-use crate::common::{
-    BOLD, DIM, GREEN, ICONS, colored, fmt_date_local, fmt_task_line, fmt_task_with_note, parse_day,
-};
+use crate::common::parse_day;
+use crate::ui::render_element_to_string;
+use crate::ui::views::logbook::LogbookView;
 use anyhow::Result;
 use clap::Args;
+use iocraft::prelude::*;
 use std::io::Write;
+use std::sync::Arc;
 
 #[derive(Debug, Default, Args)]
 #[command(about = "Show the Logbook")]
@@ -25,7 +27,7 @@ impl Command for LogbookArgs {
         out: &mut dyn Write,
         ctx: &mut dyn crate::cmd_ctx::CmdCtx,
     ) -> Result<()> {
-        let store = cli.load_store()?;
+        let store = Arc::new(cli.load_store()?);
         let today = ctx.today();
 
         let from_day =
@@ -40,63 +42,18 @@ impl Command for LogbookArgs {
         }
 
         let tasks = store.logbook(from_day, to_day);
-        if tasks.is_empty() {
-            writeln!(
-                out,
-                "{}",
-                colored("Logbook is empty.", &[DIM], cli.no_color)
-            )?;
-            return Ok(());
-        }
-
-        let id_prefix_len =
-            store.unique_prefix_length(&tasks.iter().map(|t| t.uuid.clone()).collect::<Vec<_>>());
-
-        writeln!(
-            out,
-            "{}",
-            colored(
-                &format!("{} Logbook  ({} tasks)", ICONS.done, tasks.len()),
-                &[BOLD, GREEN],
-                cli.no_color,
-            )
-        )?;
-
-        let mut current_day = String::new();
-        for task in tasks {
-            let day = fmt_date_local(task.stop_date);
-            if day != current_day {
-                writeln!(out)?;
-                writeln!(
-                    out,
-                    "{}",
-                    colored(&format!("  {}", day), &[BOLD], cli.no_color)
-                )?;
-                current_day = day;
+        let mut ui = element! {
+            ContextProvider(value: Context::owned(store.clone())) {
+                ContextProvider(value: Context::owned(today)) {
+                    LogbookView(
+                        items: &tasks,
+                        detailed: self.detailed.detailed,
+                    )
+                }
             }
-            let line = fmt_task_line(
-                &task,
-                &store,
-                true,
-                false,
-                false,
-                Some(id_prefix_len),
-                &today,
-                cli.no_color,
-            );
-            writeln!(
-                out,
-                "{}",
-                fmt_task_with_note(
-                    line,
-                    &task,
-                    "    ",
-                    Some(id_prefix_len),
-                    self.detailed.detailed,
-                    cli.no_color,
-                )
-            )?;
-        }
+        };
+        let rendered = render_element_to_string(&mut ui, cli.no_color);
+        writeln!(out, "{}", rendered)?;
 
         Ok(())
     }

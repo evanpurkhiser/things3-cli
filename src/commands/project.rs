@@ -1,11 +1,12 @@
 use crate::app::Cli;
 use crate::commands::Command;
-use crate::common::{
-    BOLD, DIM, GREEN, ICONS, colored, fmt_deadline, fmt_task_line, fmt_task_with_note,
-};
+use crate::ui::render_element_to_string;
+use crate::ui::views::project::{ProjectHeadingGroup, ProjectView};
 use anyhow::Result;
 use clap::Args;
+use iocraft::prelude::*;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 #[derive(Debug, Args)]
 #[command(about = "Show all tasks in a project")]
@@ -24,7 +25,7 @@ impl Command for ProjectArgs {
         out: &mut dyn std::io::Write,
         ctx: &mut dyn crate::cmd_ctx::CmdCtx,
     ) -> Result<()> {
-        let store = cli.load_store()?;
+        let store = Arc::new(cli.load_store()?);
         let today = ctx.today();
         let (task_opt, err, ambiguous) = store.resolve_mark_identifier(&self.project_id);
         let Some(project) = task_opt else {
@@ -75,133 +76,33 @@ impl Command for ProjectArgs {
             items.sort_by_key(|t| t.index);
         }
 
-        let total = children.len();
-        let progress = store.project_progress(&project.uuid);
-        let done_count = progress.done;
+        let heading_groups = sorted_heading_uuids
+            .iter()
+            .filter_map(|heading_uuid| {
+                let heading = headings.get(heading_uuid)?;
+                let tasks = by_heading.get(heading_uuid)?;
+                Some(ProjectHeadingGroup {
+                    title: heading.title.clone(),
+                    items: tasks.iter().collect::<Vec<_>>(),
+                })
+            })
+            .collect::<Vec<_>>();
 
-        let tags = if project.tags.is_empty() {
-            String::new()
-        } else {
-            let tag_names = project
-                .tags
-                .iter()
-                .map(|t| store.resolve_tag_title(t))
-                .collect::<Vec<_>>()
-                .join(", ");
-            colored(&format!(" [{tag_names}]"), &[DIM], cli.no_color)
-        };
-        writeln!(
-            out,
-            "{}{}{}",
-            colored(
-                &format!(
-                    "{} {}  ({}/{})",
-                    ICONS.project,
-                    project.title,
-                    done_count,
-                    done_count + total as i32
-                ),
-                &[BOLD, GREEN],
-                cli.no_color,
-            ),
-            fmt_deadline(project.deadline, &today, cli.no_color),
-            tags
-        )?;
-
-        if let Some(notes) = &project.notes {
-            let lines = notes.lines().collect::<Vec<_>>();
-            for note in lines.iter().take(lines.len().saturating_sub(1)) {
-                writeln!(
-                    out,
-                    "{} {}",
-                    colored("  │", &[DIM], cli.no_color),
-                    colored(note, &[DIM], cli.no_color)
-                )?;
-            }
-            if let Some(last) = lines.last() {
-                writeln!(
-                    out,
-                    "{} {}",
-                    colored("  └", &[DIM], cli.no_color),
-                    colored(last, &[DIM], cli.no_color)
-                )?;
-            }
-        }
-
-        let mut all_uuids = vec![project.uuid.clone()];
-        all_uuids.extend(children.iter().map(|t| t.uuid.clone()));
-        let id_prefix_len = store.unique_prefix_length(&all_uuids);
-
-        if children.is_empty() {
-            writeln!(out, "{}", colored("  No tasks.", &[DIM], cli.no_color))?;
-            return Ok(());
-        }
-
-        if !ungrouped.is_empty() {
-            writeln!(out)?;
-            for t in ungrouped {
-                let line =
-                    fmt_task_line(
-                        &t,
-                        &store,
-                        false,
-                        true,
-                        false,
-                        Some(id_prefix_len),
-                        &today,
-                        cli.no_color,
-                    );
-                writeln!(
-                    out,
-                    "{}",
-                    fmt_task_with_note(
-                        line,
-                        &t,
-                        "  ",
-                        Some(id_prefix_len),
-                        self.detailed,
-                        cli.no_color,
+        let mut ui = element! {
+            ContextProvider(value: Context::owned(store.clone())) {
+                ContextProvider(value: Context::owned(today)) {
+                    ProjectView(
+                        project: &project,
+                        ungrouped: ungrouped.iter().collect::<Vec<_>>(),
+                        heading_groups,
+                        detailed: self.detailed,
+                        no_color: cli.no_color,
                     )
-                )?;
-            }
-        }
-
-        for heading_uuid in sorted_heading_uuids {
-            if let Some(heading) = headings.get(&heading_uuid) {
-                writeln!(out)?;
-                writeln!(
-                    out,
-                    "{}",
-                    colored(&format!("  {}", heading.title), &[BOLD], cli.no_color)
-                )?;
-                if let Some(tasks) = by_heading.get(&heading_uuid) {
-                    for t in tasks {
-                        let line = fmt_task_line(
-                            t,
-                            &store,
-                            false,
-                            true,
-                            false,
-                            Some(id_prefix_len),
-                            &today,
-                            cli.no_color,
-                        );
-                        writeln!(
-                            out,
-                            "{}",
-                            fmt_task_with_note(
-                                line,
-                                t,
-                                "    ",
-                                Some(id_prefix_len),
-                                self.detailed,
-                                cli.no_color,
-                            )
-                        )?;
-                    }
                 }
             }
-        }
+        };
+        let rendered = render_element_to_string(&mut ui, cli.no_color);
+        writeln!(out, "{}", rendered)?;
 
         Ok(())
     }

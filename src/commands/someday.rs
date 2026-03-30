@@ -1,11 +1,12 @@
 use crate::app::Cli;
 use crate::commands::{Command, DetailedArgs};
-use crate::common::{
-    colored, fmt_project_with_note, fmt_task_line, fmt_task_with_note, BOLD, CYAN, DIM, ICONS,
-};
+use crate::ui::render_element_to_string;
+use crate::ui::views::someday::SomedayView;
 use anyhow::Result;
 use clap::Args;
+use iocraft::prelude::*;
 use std::io::Write;
+use std::sync::Arc;
 
 #[derive(Debug, Default, Args)]
 pub struct SomedayArgs {
@@ -20,96 +21,22 @@ impl Command for SomedayArgs {
         out: &mut dyn Write,
         ctx: &mut dyn crate::cmd_ctx::CmdCtx,
     ) -> Result<()> {
-        let store = cli.load_store()?;
+        let store = Arc::new(cli.load_store()?);
         let today = ctx.today();
         let items = store.someday();
 
-        if items.is_empty() {
-            writeln!(
-                out,
-                "{}",
-                colored("Someday is empty.", &[DIM], cli.no_color)
-            )?;
-            return Ok(());
-        }
-
-        writeln!(
-            out,
-            "{}",
-            colored(
-                &format!("{} Someday  ({} items)", ICONS.task_someday, items.len()),
-                &[BOLD, CYAN],
-                cli.no_color,
-            )
-        )?;
-        writeln!(out)?;
-
-        let id_prefix_len =
-            store.unique_prefix_length(&items.iter().map(|i| i.uuid.clone()).collect::<Vec<_>>());
-        let projects = items
-            .iter()
-            .filter(|i| i.is_project())
-            .cloned()
-            .collect::<Vec<_>>();
-        let tasks = items
-            .iter()
-            .filter(|i| !i.is_project())
-            .cloned()
-            .collect::<Vec<_>>();
-
-        for item in projects {
-            writeln!(
-                out,
-                "{}",
-                fmt_project_with_note(
-                    &item,
-                    &store,
-                    "  ",
-                    Some(id_prefix_len),
-                    true,
-                    false,
-                    self.detailed.detailed,
-                    &today,
-                    cli.no_color,
-                )
-            )?;
-        }
-
-        if !tasks.is_empty()
-            && !store
-                .someday()
-                .iter()
-                .filter(|i| i.is_project())
-                .collect::<Vec<_>>()
-                .is_empty()
-        {
-            writeln!(out)?;
-        }
-
-        for item in tasks {
-            let line = fmt_task_line(
-                &item,
-                &store,
-                false,
-                false,
-                false,
-                Some(id_prefix_len),
-                &today,
-                cli.no_color,
-            );
-            writeln!(
-                out,
-                "{}",
-                fmt_task_with_note(
-                    line,
-                    &item,
-                    "  ",
-                    Some(id_prefix_len),
-                    self.detailed.detailed,
-                    cli.no_color,
-                )
-            )?;
-        }
+        let mut ui = element! {
+            ContextProvider(value: Context::owned(store.clone())) {
+                ContextProvider(value: Context::owned(today)) {
+                    SomedayView(
+                        items: &items,
+                        detailed: self.detailed.detailed,
+                    )
+                }
+            }
+        };
+        let rendered = render_element_to_string(&mut ui, cli.no_color);
+        writeln!(out, "{}", rendered)?;
         Ok(())
     }
 }

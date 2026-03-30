@@ -1,0 +1,11 @@
+```trycmd
+$ run.sh things3 --today-ts 1774396800 anytime
+◌ Anytime  (4 tasks)
+
+  B ◆ Home
+    D ▢ Area task 1
+    E ▢ Area task 2
+    F ▢ Area task 3
+    Hiding 1 more
+
+```

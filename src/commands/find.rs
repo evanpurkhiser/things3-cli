@@ -1,16 +1,17 @@
 use crate::app::Cli;
 use crate::arg_types::IdentifierToken;
 use crate::commands::{Command, DetailedArgs};
-use crate::common::{
-    BOLD, CYAN, DIM, ICONS, colored, fmt_project_with_note, fmt_task_line, fmt_task_with_note,
-    resolve_single_tag,
-};
+use crate::common::resolve_single_tag;
 use crate::ids::ThingsId;
 use crate::store::{Task, ThingsStore};
+use crate::ui::render_element_to_string;
+use crate::ui::views::find::{FindRow, FindView};
 use crate::wire::task::{TaskStart, TaskStatus};
 use anyhow::Result;
 use chrono::{DateTime, Duration, NaiveDate, TimeZone, Utc};
 use clap::{ArgGroup, Args};
+use iocraft::prelude::*;
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Copy)]
 struct MatchResult {
@@ -105,7 +106,7 @@ impl Command for FindArgs {
         out: &mut dyn std::io::Write,
         ctx: &mut dyn crate::cmd_ctx::CmdCtx,
     ) -> Result<()> {
-        let store = cli.load_store()?;
+        let store = Arc::new(cli.load_store()?);
         let today = ctx.today();
 
         for (flag, exprs) in [
@@ -153,41 +154,23 @@ impl Command for FindArgs {
             (a_proj, a.index, &a.uuid).cmp(&(b_proj, b.index, &b.uuid))
         });
 
-        if matched.is_empty() {
-            writeln!(
-                out,
-                "{}",
-                colored("No matching tasks.", &[DIM], cli.no_color)
-            )?;
-            return Ok(());
-        }
-
-        let ids = matched
+        let rows = matched
             .iter()
-            .map(|(task, _)| task.uuid.clone())
+            .map(|(task, result)| FindRow {
+                task,
+                force_detailed: result.checklist_only,
+            })
             .collect::<Vec<_>>();
-        let id_prefix_len = store.unique_prefix_length(&ids);
-        let count = matched.len();
-        let label = if count == 1 { "task" } else { "tasks" };
-        writeln!(
-            out,
-            "{}",
-            colored(
-                &format!("{} Find  ({} {})", ICONS.tag, count, label),
-                &[BOLD, CYAN],
-                cli.no_color,
-            )
-        )?;
-        writeln!(out)?;
 
-        for (task, result) in matched {
-            let force_detailed = self.detailed.detailed || result.checklist_only;
-            writeln!(
-                out,
-                "{}",
-                fmt_result(&task, &store, id_prefix_len, force_detailed, &today, cli.no_color,)
-            )?;
-        }
+        let mut ui = element! {
+            ContextProvider(value: Context::owned(store.clone())) {
+                ContextProvider(value: Context::owned(today)) {
+                    FindView(rows, detailed: self.detailed.detailed)
+                }
+            }
+        };
+        let rendered = render_element_to_string(&mut ui, cli.no_color);
+        writeln!(out, "{}", rendered)?;
 
         Ok(())
     }
@@ -432,39 +415,4 @@ fn matches(
     }
 
     MatchResult::yes(checklist_only)
-}
-
-fn fmt_result(
-    task: &Task,
-    store: &ThingsStore,
-    id_prefix_len: usize,
-    detailed: bool,
-    today: &DateTime<Utc>,
-    no_color: bool,
-) -> String {
-    if task.is_project() {
-        return fmt_project_with_note(
-            task,
-            store,
-            "  ",
-            Some(id_prefix_len),
-            true,
-            false,
-            detailed,
-            today,
-            no_color,
-        );
-    }
-
-    let line = fmt_task_line(
-        task,
-        store,
-        true,
-        true,
-        false,
-        Some(id_prefix_len),
-        today,
-        no_color,
-    );
-    fmt_task_with_note(line, task, "  ", Some(id_prefix_len), detailed, no_color)
 }
