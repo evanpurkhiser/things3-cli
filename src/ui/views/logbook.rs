@@ -14,7 +14,7 @@ pub struct LogbookViewProps<'a> {
 
 #[component]
 pub fn LogbookView<'a>(hooks: Hooks, props: &LogbookViewProps<'a>) -> impl Into<AnyElement<'a>> {
-    let _store = hooks.use_context::<Arc<ThingsStore>>().clone();
+    let store = hooks.use_context::<Arc<ThingsStore>>().clone();
     let Some(items) = props.items else {
         return element! { Text(content: "") }.into_any();
     };
@@ -43,7 +43,7 @@ pub fn LogbookView<'a>(hooks: Hooks, props: &LogbookViewProps<'a>) -> impl Into<
         show_staged_today_marker: false,
     };
 
-    let id_prefix_len = 1usize;
+    let id_prefix_len = store.unique_prefix_length(&items.iter().map(|t| t.uuid.clone()).collect::<Vec<_>>());
     let mut sections: Vec<AnyElement<'a>> = Vec::new();
     for (idx, (day, day_items)) in groups.into_iter().enumerate() {
         if idx > 0 {

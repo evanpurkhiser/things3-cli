@@ -46,8 +46,11 @@ pub fn ProjectView<'a>(hooks: Hooks, props: &ProjectViewProps<'a>) -> impl Into<
     };
     let deadline = fmt_deadline(project.deadline, &today, props.no_color);
 
-    let mut all_uuids = vec![project.uuid.clone()];
-    all_uuids.extend(props.ungrouped.iter().map(|t| t.uuid.clone()));
+    let mut all_uuids = props
+        .ungrouped
+        .iter()
+        .map(|t| t.uuid.clone())
+        .collect::<Vec<_>>();
     for group in &props.heading_groups {
         all_uuids.extend(group.items.iter().map(|t| t.uuid.clone()));
     }

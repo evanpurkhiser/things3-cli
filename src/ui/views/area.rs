@@ -57,10 +57,13 @@ pub fn AreaView<'a>(hooks: Hooks, props: &AreaViewProps<'a>) -> impl Into<AnyEle
         format!(" [{}]", names)
     };
 
-    let mut all_uuids = vec![area.uuid.clone()];
-    all_uuids.extend(props.projects.iter().map(|p| p.uuid.clone()));
-    all_uuids.extend(props.tasks.iter().map(|t| t.uuid.clone()));
-    let id_prefix_len = store.unique_prefix_length(&all_uuids);
+    let mut item_uuids = props
+        .projects
+        .iter()
+        .map(|p| p.uuid.clone())
+        .collect::<Vec<_>>();
+    item_uuids.extend(props.tasks.iter().map(|t| t.uuid.clone()));
+    let id_prefix_len = store.unique_prefix_length(&item_uuids);
 
     let task_options = TaskOptions {
         detailed: props.detailed,
