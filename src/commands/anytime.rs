@@ -1,9 +1,12 @@
 use crate::app::Cli;
 use crate::commands::{Command, DetailedArgs};
-use crate::common::{colored, fmt_tasks_grouped, BOLD, CYAN, DIM, ICONS};
+use crate::ui::render_element_to_string;
+use crate::ui::views::anytime::AnytimeView;
 use anyhow::Result;
 use clap::Args;
+use iocraft::prelude::*;
 use std::io::Write;
+use std::sync::Arc;
 
 #[derive(Debug, Default, Args)]
 pub struct AnytimeArgs {
@@ -18,43 +21,23 @@ impl Command for AnytimeArgs {
         out: &mut dyn Write,
         ctx: &mut dyn crate::cmd_ctx::CmdCtx,
     ) -> Result<()> {
-        let store = cli.load_store()?;
+        let store = Arc::new(cli.load_store()?);
         let today = ctx.today();
         let tasks = store.anytime(&today);
 
-        if tasks.is_empty() {
-            writeln!(
-                out,
-                "{}",
-                colored("Anytime is empty.", &[DIM], cli.no_color)
-            )?;
-            return Ok(());
-        }
+        let mut ui = element! {
+            ContextProvider(value: Context::owned(store.clone())) {
+                ContextProvider(value: Context::owned(today)) {
+                    AnytimeView(
+                        items: &tasks,
+                        detailed: self.detailed.detailed,
+                    )
+                }
+            }
+        };
 
-        writeln!(
-            out,
-            "{}",
-            colored(
-                &format!("{} Anytime  ({} tasks)", ICONS.anytime, tasks.len()),
-                &[BOLD, CYAN],
-                cli.no_color,
-            )
-        )?;
-        writeln!(out)?;
-
-        writeln!(
-            out,
-            "{}",
-            fmt_tasks_grouped(
-                &tasks,
-                &store,
-                "  ",
-                true,
-                self.detailed.detailed,
-                &today,
-                cli.no_color,
-            )
-        )?;
+        let rendered = render_element_to_string(&mut ui, cli.no_color);
+        writeln!(out, "{}", rendered)?;
         Ok(())
     }
 }

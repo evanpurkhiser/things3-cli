@@ -121,7 +121,7 @@ pub struct ProjectProgress {
     pub done: i32,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Task {
     pub uuid: ThingsId,
     pub title: String,

@@ -1,23 +1,13 @@
 use crate::common::ICONS;
 use crate::ids::ThingsId;
 use crate::store::{Task, ThingsStore};
-use crate::ui::style::dim;
-use crate::ui::widgets::task_group::{TaskGroupHeader, TaskGroupWidget};
-use crate::ui::widgets::tasks::{TaskOptions, TasksWidget};
-use chrono::{DateTime, Utc};
-use ratatui::{
-    buffer::Buffer,
-    layout::Rect,
-    style::{Color, Modifier, Style},
-    text::{Line, Span},
-    widgets::Widget,
-};
+use crate::ui::components::task_group::{TaskGroup, TaskGroupHeader};
+use crate::ui::components::tasks::{TaskList, TaskOptions};
+use iocraft::prelude::*;
 use std::collections::HashMap;
+use std::sync::Arc;
 
-const HEADER_HEIGHT: u16 = 1;
-const HEADER_GAP: u16 = 1;
-const SECTION_GAP: u16 = 1;
-const LIST_INDENT: u16 = 2;
+const LIST_INDENT: u32 = 2;
 
 #[derive(Default)]
 struct AreaGroup<'a> {
@@ -27,423 +17,264 @@ struct AreaGroup<'a> {
 #[derive(Default)]
 struct GroupedSection<'a> {
     unscoped: Vec<&'a Task>,
-    project_only: Vec<(ThingsId, Vec<&'a Task>)>,
+    by_project: Vec<(ThingsId, Vec<&'a Task>)>,
     by_area: Vec<(ThingsId, AreaGroup<'a>)>,
 }
 
-pub struct TodayView<'a> {
-    pub store: &'a ThingsStore,
-    pub today: &'a DateTime<Utc>,
-    pub items: Vec<Task>,
-    pub id_prefix_len: usize,
+fn header_text(items: &[Task]) -> String {
+    let project_count = items.iter().filter(|task| task.is_project()).count();
+    let task_count = items.iter().filter(|task| !task.is_project()).count();
+    if project_count > 0 {
+        let label = if project_count == 1 {
+            "project"
+        } else {
+            "projects"
+        };
+        format!(
+            "{} Today  ({} tasks, {} {})",
+            ICONS.today, task_count, project_count, label
+        )
+    } else {
+        format!("{} Today  ({} tasks)", ICONS.today, task_count)
+    }
+}
+
+fn has_regular(items: &[Task]) -> bool {
+    items.iter().any(|task| !task.evening)
+}
+
+fn has_evening(items: &[Task]) -> bool {
+    items.iter().any(|task| task.evening)
+}
+
+fn ensure_area_group<'a>(
+    grouped: &mut GroupedSection<'a>,
+    area_pos: &mut HashMap<ThingsId, usize>,
+    area_uuid: &ThingsId,
+) -> usize {
+    if let Some(i) = area_pos.get(area_uuid).copied() {
+        return i;
+    }
+    let i = grouped.by_area.len();
+    grouped
+        .by_area
+        .push((area_uuid.clone(), AreaGroup::default()));
+    area_pos.insert(area_uuid.clone(), i);
+    i
+}
+
+fn ensure_project_group<'a>(
+    grouped: &mut GroupedSection<'a>,
+    project_pos: &mut HashMap<ThingsId, usize>,
+    project_uuid: &ThingsId,
+) -> usize {
+    if let Some(i) = project_pos.get(project_uuid).copied() {
+        return i;
+    }
+    let i = grouped.by_project.len();
+    grouped.by_project.push((project_uuid.clone(), Vec::new()));
+    project_pos.insert(project_uuid.clone(), i);
+    i
+}
+
+fn group_regular_items<'a>(items: &'a [Task], store: &ThingsStore) -> GroupedSection<'a> {
+    let mut grouped = GroupedSection::default();
+    let mut project_pos: HashMap<ThingsId, usize> = HashMap::new();
+    let mut by_area_pos: HashMap<ThingsId, usize> = HashMap::new();
+
+    for task in items.iter().filter(|task| !task.evening) {
+        if task.is_project() {
+            if let Some(area_uuid) = store.effective_area_uuid(task) {
+                let area_idx = ensure_area_group(&mut grouped, &mut by_area_pos, &area_uuid);
+                grouped.by_area[area_idx].1.tasks.push(task);
+            } else {
+                grouped.unscoped.push(task);
+            }
+            continue;
+        }
+
+        let project_uuid = store.effective_project_uuid(task);
+        let area_uuid = store.effective_area_uuid(task);
+
+        match (project_uuid, area_uuid) {
+            (Some(project_uuid), _) => {
+                let project_idx =
+                    ensure_project_group(&mut grouped, &mut project_pos, &project_uuid);
+                grouped.by_project[project_idx].1.push(task);
+            }
+            (None, Some(area_uuid)) => {
+                let area_idx = ensure_area_group(&mut grouped, &mut by_area_pos, &area_uuid);
+                grouped.by_area[area_idx].1.tasks.push(task);
+            }
+            (None, None) => grouped.unscoped.push(task),
+        }
+    }
+
+    grouped
+}
+
+fn evening_items(items: &[Task]) -> Vec<&Task> {
+    items.iter().filter(|task| task.evening).collect()
+}
+
+fn id_prefix_len(store: &ThingsStore, items: &[Task]) -> usize {
+    let mut ids = items
+        .iter()
+        .map(|task| task.uuid.clone())
+        .collect::<Vec<_>>();
+    for task in items {
+        if let Some(project_uuid) = store.effective_project_uuid(task) {
+            ids.push(project_uuid);
+        }
+        if let Some(area_uuid) = store.effective_area_uuid(task) {
+            ids.push(area_uuid);
+        }
+    }
+    store.unique_prefix_length(&ids)
+}
+
+#[derive(Default, Props)]
+pub struct TodayViewProps<'a> {
+    pub items: Option<&'a Vec<Task>>,
     pub detailed: bool,
 }
 
-impl<'a> TodayView<'a> {
-    fn is_empty(&self) -> bool {
-        self.items.is_empty()
-    }
+#[component]
+pub fn TodayView<'a>(hooks: Hooks, props: &TodayViewProps<'a>) -> impl Into<AnyElement<'a>> {
+    let store = hooks.use_context::<Arc<ThingsStore>>().clone();
+    let Some(items) = props.items else {
+        return element! { Text(content: "") }.into_any();
+    };
 
-    fn project_count(&self) -> usize {
-        self.items.iter().filter(|task| task.is_project()).count()
-    }
-
-    fn task_count(&self) -> usize {
-        self.items.iter().filter(|task| !task.is_project()).count()
-    }
-
-    fn has_regular(&self) -> bool {
-        self.items.iter().any(|task| !task.evening)
-    }
-
-    fn has_evening(&self) -> bool {
-        self.items.iter().any(|task| task.evening)
-    }
-
-    fn header_text(&self) -> String {
-        let task_count = self.task_count();
-        let project_count = self.project_count();
-        if project_count > 0 {
-            let label = if project_count == 1 {
-                "project"
-            } else {
-                "projects"
-            };
-            format!(
-                "{} Today  ({} tasks, {} {})",
-                ICONS.today, task_count, project_count, label
-            )
+    let content: AnyElement<'a> = {
+        if items.is_empty() {
+            element! { Text(content: "No tasks for today.", wrap: TextWrap::NoWrap) }.into_any()
         } else {
-            format!("{} Today  ({} tasks)", ICONS.today, task_count)
-        }
-    }
+            let prefix_len = id_prefix_len(store.as_ref(), items);
+            let regular = group_regular_items(items, store.as_ref());
+            let evening = evening_items(items);
 
-    fn render_today_header(&self, area: Rect, y: u16, buf: &mut Buffer) {
-        Line::from(Span::styled(
-            self.header_text(),
-            Style::default()
-                .add_modifier(Modifier::BOLD)
-                .fg(Color::Yellow),
-        ))
-        .render(
-            Rect {
-                x: area.x,
-                y,
-                width: area.width,
-                height: HEADER_HEIGHT,
-            },
-            buf,
-        );
-    }
-
-    fn render_evening_header(&self, area: Rect, y: u16, buf: &mut Buffer) {
-        Line::from(Span::styled(
-            format!("{} This Evening", ICONS.evening),
-            Style::default()
-                .add_modifier(Modifier::BOLD)
-                .fg(Color::Blue),
-        ))
-        .render(
-            Rect {
-                x: area.x,
-                y,
-                width: area.width,
-                height: HEADER_HEIGHT,
-            },
-            buf,
-        );
-    }
-
-    fn tasks_widget<'b>(
-        &'a self,
-        items: &'b [&'a Task],
-        show_project: bool,
-        show_area: bool,
-    ) -> TasksWidget<'a>
-    where
-        'b: 'a,
-    {
-        TasksWidget {
-            items,
-            store: self.store,
-            today: self.today,
-            id_prefix_len: self.id_prefix_len,
-            options: TaskOptions {
-                detailed: self.detailed,
-                show_project,
-                show_area,
+            let regular_options = TaskOptions {
+                detailed: props.detailed,
+                show_project: false,
+                show_area: false,
                 show_today_markers: false,
                 show_staged_today_marker: true,
-            },
-        }
-    }
-
-    fn group_regular_items(&'a self) -> GroupedSection<'a> {
-        let mut grouped = GroupedSection::default();
-        let mut project_only_pos: HashMap<ThingsId, usize> = HashMap::new();
-        let mut by_area_pos: HashMap<ThingsId, usize> = HashMap::new();
-
-        for task in self.items.iter().filter(|task| !task.evening) {
-            if task.is_project() {
-                if let Some(area_uuid) = self.store.effective_area_uuid(task) {
-                    let area_idx = if let Some(i) = by_area_pos.get(&area_uuid).copied() {
-                        i
-                    } else {
-                        let i = grouped.by_area.len();
-                        grouped
-                            .by_area
-                            .push((area_uuid.clone(), AreaGroup::default()));
-                        by_area_pos.insert(area_uuid.clone(), i);
-                        i
-                    };
-                    grouped.by_area[area_idx].1.tasks.push(task);
-                } else {
-                    grouped.unscoped.push(task);
-                }
-                continue;
-            }
-
-            let project_uuid = self.store.effective_project_uuid(task);
-            let area_uuid = self.store.effective_area_uuid(task);
-
-            match (project_uuid, area_uuid) {
-                (Some(project_uuid), _) => {
-                    // Tasks in a project are grouped under the project header
-                    // even if that project belongs to an area.
-                    let project_idx = if let Some(i) = project_only_pos.get(&project_uuid).copied()
-                    {
-                        i
-                    } else {
-                        let i = grouped.project_only.len();
-                        grouped
-                            .project_only
-                            .push((project_uuid.clone(), Vec::new()));
-                        project_only_pos.insert(project_uuid.clone(), i);
-                        i
-                    };
-                    grouped.project_only[project_idx].1.push(task);
-                }
-                (None, Some(area_uuid)) => {
-                    let area_idx = if let Some(i) = by_area_pos.get(&area_uuid).copied() {
-                        i
-                    } else {
-                        let i = grouped.by_area.len();
-                        grouped
-                            .by_area
-                            .push((area_uuid.clone(), AreaGroup::default()));
-                        by_area_pos.insert(area_uuid.clone(), i);
-                        i
-                    };
-                    grouped.by_area[area_idx].1.tasks.push(task);
-                }
-                (None, None) => {
-                    grouped.unscoped.push(task);
-                }
-            }
-        }
-
-        grouped
-    }
-
-    fn regular_block_count(grouped: &GroupedSection<'_>) -> usize {
-        let mut count = 0usize;
-        if !grouped.unscoped.is_empty() {
-            count += 1;
-        }
-        count += grouped.project_only.len();
-        count += grouped.by_area.len();
-        count
-    }
-
-    fn regular_grouped_height(&'a self, grouped: &GroupedSection<'a>) -> u16 {
-        let mut h = 0u16;
-
-        if !grouped.unscoped.is_empty() {
-            h = h.saturating_add(
-                TaskGroupWidget {
-                    header: None,
-                    tasks: self.tasks_widget(&grouped.unscoped, false, false),
-                    indent_under_header: 0,
-                    hidden_count: 0,
-                }
-                .height(),
-            );
-        }
-
-        for (project_uuid, tasks) in &grouped.project_only {
-            h = h.saturating_add(1);
-            h = h.saturating_add(
-                TaskGroupWidget {
-                    header: Some(TaskGroupHeader::Project {
-                        project_uuid: project_uuid.clone(),
-                        title: self.store.resolve_project_title(project_uuid),
-                        id_prefix_len: self.id_prefix_len,
-                    }),
-                    tasks: self.tasks_widget(tasks.as_slice(), false, false),
-                    indent_under_header: 2,
-                    hidden_count: 0,
-                }
-                .height(),
-            );
-        }
-
-        for (area_uuid, area_group) in &grouped.by_area {
-            h = h.saturating_add(1);
-            h = h.saturating_add(
-                TaskGroupWidget {
-                    header: Some(TaskGroupHeader::Area {
-                        area_uuid: area_uuid.clone(),
-                        title: self.store.resolve_area_title(area_uuid),
-                        id_prefix_len: self.id_prefix_len,
-                    }),
-                    tasks: self.tasks_widget(&area_group.tasks, false, false),
-                    indent_under_header: 2,
-                    hidden_count: 0,
-                }
-                .height(),
-            );
-        }
-
-        let blocks = Self::regular_block_count(grouped);
-        if blocks > 1 {
-            h = h.saturating_add((blocks - 1) as u16);
-        }
-        h
-    }
-
-    fn evening_items(&'a self) -> Vec<&'a Task> {
-        self.items.iter().filter(|task| task.evening).collect()
-    }
-
-    fn render_regular_grouped_section(
-        &'a self,
-        grouped: &GroupedSection<'a>,
-        mut y: u16,
-        base_x: u16,
-        base_width: u16,
-        buf: &mut Buffer,
-    ) -> u16 {
-        let mut first_block = true;
-
-        if !grouped.unscoped.is_empty() {
-            let group = TaskGroupWidget {
-                header: None,
-                tasks: self.tasks_widget(&grouped.unscoped, false, false),
-                indent_under_header: 0,
-                hidden_count: 0,
             };
-            let h = group.height();
-            group.render(
-                Rect {
-                    x: base_x,
-                    y,
-                    width: base_width,
-                    height: h,
-                },
-                buf,
-            );
-            y = y.saturating_add(h);
-            first_block = false;
-        }
-
-        for (project_uuid, tasks) in &grouped.project_only {
-            if !first_block {
-                y = y.saturating_add(1);
-            }
-            let group = TaskGroupWidget {
-                header: Some(TaskGroupHeader::Project {
-                    project_uuid: project_uuid.clone(),
-                    title: self.store.resolve_project_title(project_uuid),
-                    id_prefix_len: self.id_prefix_len,
-                }),
-                tasks: self.tasks_widget(tasks.as_slice(), false, false),
-                indent_under_header: 2,
-                hidden_count: 0,
+            let evening_options = TaskOptions {
+                detailed: props.detailed,
+                show_project: true,
+                show_area: true,
+                show_today_markers: false,
+                show_staged_today_marker: true,
             };
-            let h = group.height();
-            group.render(
-                Rect {
-                    x: base_x,
-                    y,
-                    width: base_width,
-                    height: h,
-                },
-                buf,
-            );
-            y = y.saturating_add(h);
-            first_block = false;
-        }
 
-        for (area_uuid, area_group) in &grouped.by_area {
-            if !first_block {
-                y = y.saturating_add(1);
+            let mut regular_blocks: Vec<AnyElement<'a>> = Vec::new();
+            let mut first = true;
+
+            if !regular.unscoped.is_empty() {
+                regular_blocks.push(
+                    element! {
+                        TaskGroup(
+                            header: None,
+                            items: regular.unscoped.clone(),
+                            id_prefix_len: prefix_len,
+                            options: regular_options,
+                            indent_under_header: 0u16,
+                            hidden_count: 0usize,
+                        )
+                    }
+                    .into_any(),
+                );
+                first = false;
             }
-            let group = TaskGroupWidget {
-                header: Some(TaskGroupHeader::Area {
-                    area_uuid: area_uuid.clone(),
-                    title: self.store.resolve_area_title(area_uuid),
-                    id_prefix_len: self.id_prefix_len,
-                }),
-                tasks: self.tasks_widget(&area_group.tasks, false, false),
-                indent_under_header: 2,
-                hidden_count: 0,
-            };
-            let h = group.height();
-            group.render(
-                Rect {
-                    x: base_x,
-                    y,
-                    width: base_width,
-                    height: h,
-                },
-                buf,
-            );
-            y = y.saturating_add(h);
 
-            first_block = false;
+            for (project_uuid, tasks) in &regular.by_project {
+                if !first {
+                    regular_blocks
+                        .push(element! { Text(content: "", wrap: TextWrap::NoWrap) }.into_any());
+                }
+                regular_blocks.push(
+                    element! {
+                        TaskGroup(
+                            header: Some(TaskGroupHeader::Project {
+                                project_uuid: project_uuid.clone(),
+                                title: store.resolve_project_title(project_uuid),
+                                id_prefix_len: prefix_len,
+                            }),
+                            items: tasks.clone(),
+                            id_prefix_len: prefix_len,
+                            options: regular_options,
+                            indent_under_header: 2u16,
+                            hidden_count: 0usize,
+                        )
+                    }
+                    .into_any(),
+                );
+                first = false;
+            }
+
+            for (area_uuid, area_group) in &regular.by_area {
+                if !first {
+                    regular_blocks
+                        .push(element! { Text(content: "", wrap: TextWrap::NoWrap) }.into_any());
+                }
+                regular_blocks.push(
+                    element! {
+                        TaskGroup(
+                            header: Some(TaskGroupHeader::Area {
+                                area_uuid: area_uuid.clone(),
+                                title: store.resolve_area_title(area_uuid),
+                                id_prefix_len: prefix_len,
+                            }),
+                            items: area_group.tasks.clone(),
+                            id_prefix_len: prefix_len,
+                            options: regular_options,
+                            indent_under_header: 2u16,
+                            hidden_count: 0usize,
+                        )
+                    }
+                    .into_any(),
+                );
+                first = false;
+            }
+
+            element! {
+                    View(flex_direction: FlexDirection::Column) {
+                        Text(content: header_text(items), wrap: TextWrap::NoWrap)
+
+                        #(if has_regular(items) {
+                            Some(element! {
+                                View(flex_direction: FlexDirection::Column) {
+                                    Text(content: "", wrap: TextWrap::NoWrap)
+                                    View(flex_direction: FlexDirection::Column, padding_left: LIST_INDENT) {
+                                        #(regular_blocks)
+                                    }
+                                }
+                            })
+                        } else { None })
+
+                        #(if has_evening(items) {
+                            Some(element! {
+                                View(flex_direction: FlexDirection::Column) {
+                                    Text(content: "", wrap: TextWrap::NoWrap)
+                                    Text(content: format!("{} This Evening", ICONS.evening), wrap: TextWrap::NoWrap)
+                                    Text(content: "", wrap: TextWrap::NoWrap)
+                                    View(flex_direction: FlexDirection::Column, padding_left: LIST_INDENT) {
+                                        TaskList(
+                                            items: evening,
+                                            id_prefix_len: prefix_len,
+                                            options: evening_options,
+                                        )
+                                    }
+                                }
+                            })
+                        } else { None })
+                    }
+                }
+                .into_any()
         }
+    };
 
-        y
-    }
-
-    pub fn height(&'a self) -> u16 {
-        if self.is_empty() {
-            return 1;
-        }
-
-        let mut h: u16 = HEADER_HEIGHT;
-
-        if self.has_regular() {
-            h = h.saturating_add(HEADER_GAP);
-            let regular = self.group_regular_items();
-            h = h.saturating_add(self.regular_grouped_height(&regular));
-        }
-
-        if self.has_evening() {
-            h = h.saturating_add(SECTION_GAP);
-            h = h.saturating_add(HEADER_HEIGHT);
-            h = h.saturating_add(HEADER_GAP);
-            let evening_items = self.evening_items();
-            h = h.saturating_add(self.tasks_widget(&evening_items, true, true).height());
-        }
-
-        h
-    }
-}
-
-impl<'a> Widget for TodayView<'a> {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        if area.height == 0 {
-            return;
-        }
-
-        if self.is_empty() {
-            Line::from(Span::styled("No tasks for today.", dim())).render(
-                Rect {
-                    x: area.x,
-                    y: area.y,
-                    width: area.width,
-                    height: 1,
-                },
-                buf,
-            );
-            return;
-        }
-
-        let mut y = area.y;
-        self.render_today_header(area, y, buf);
-        y = y.saturating_add(HEADER_HEIGHT);
-
-        if self.has_regular() {
-            y = y.saturating_add(HEADER_GAP);
-            let regular = self.group_regular_items();
-            y = self.render_regular_grouped_section(
-                &regular,
-                y,
-                area.x.saturating_add(LIST_INDENT),
-                area.width.saturating_sub(LIST_INDENT),
-                buf,
-            );
-        }
-
-        if self.has_evening() {
-            y = y.saturating_add(SECTION_GAP);
-            self.render_evening_header(area, y, buf);
-            y = y.saturating_add(HEADER_HEIGHT);
-            y = y.saturating_add(HEADER_GAP);
-
-            let evening_items = self.evening_items();
-            let evening_tasks = self.tasks_widget(&evening_items, true, true);
-            let evening_h = evening_tasks.height();
-            evening_tasks.render(
-                Rect {
-                    x: area.x.saturating_add(LIST_INDENT),
-                    y,
-                    width: area.width.saturating_sub(LIST_INDENT),
-                    height: evening_h,
-                },
-                buf,
-            );
-        }
-    }
+    content
 }

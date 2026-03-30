@@ -1,11 +1,13 @@
 use crate::app::Cli;
 use crate::commands::{Command, DetailedArgs};
-use crate::ui::render_to_string;
+use crate::ui::render_element_to_string;
 use crate::ui::views::today::TodayView;
 use crate::wire::task::TaskStatus;
 use anyhow::Result;
 use clap::Args;
+use iocraft::prelude::*;
 use std::io::Write;
+use std::sync::Arc;
 
 #[derive(Debug, Default, Args)]
 pub struct TodayArgs {
@@ -20,7 +22,7 @@ impl Command for TodayArgs {
         out: &mut dyn Write,
         ctx: &mut dyn crate::cmd_ctx::CmdCtx,
     ) -> Result<()> {
-        let store = cli.load_store()?;
+        let store = Arc::new(cli.load_store()?);
         let today = ctx.today();
 
         let mut today_items: Vec<_> = store
@@ -43,30 +45,17 @@ impl Command for TodayArgs {
             )
         });
 
-        let mut id_candidates = today_items
-            .iter()
-            .map(|task| task.uuid.clone())
-            .collect::<Vec<_>>();
-        for task in &today_items {
-            if let Some(project_uuid) = store.effective_project_uuid(task) {
-                id_candidates.push(project_uuid);
+        let mut ui = element! {
+            ContextProvider(value: Context::owned(store.clone())) {
+                ContextProvider(value: Context::owned(today)) {
+                    TodayView(
+                        items: &today_items,
+                        detailed: self.detailed.detailed,
+                    )
+                }
             }
-            if let Some(area_uuid) = store.effective_area_uuid(task) {
-                id_candidates.push(area_uuid);
-            }
-        }
-        let id_prefix_len = store.unique_prefix_length(&id_candidates);
-
-        let view = TodayView {
-            store: &store,
-            today: &today,
-            items: today_items,
-            id_prefix_len,
-            detailed: self.detailed.detailed,
         };
-
-        let height = view.height();
-        let rendered = render_to_string(view, 4096, height, cli.no_color);
+        let rendered = render_element_to_string(&mut ui, cli.no_color);
         writeln!(out, "{}", rendered)?;
 
         Ok(())

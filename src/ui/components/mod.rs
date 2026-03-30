@@ -1,9 +1,7 @@
-pub mod area_header;
 pub mod checklist;
 pub mod checklist_item;
-pub mod id_col;
-pub mod left_border;
-pub mod project_header;
+pub mod details_container;
+pub mod header;
 pub mod project_item;
 pub mod task_group;
 pub mod task_line;
