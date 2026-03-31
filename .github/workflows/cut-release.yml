@@ -73,3 +73,11 @@ jobs:
         run: |
           TAG="v${VERSION}"
           git push origin HEAD:main "refs/tags/${TAG}"
+
+      - name: Dispatch Release Binaries workflow for tag
+        env:
+          VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v${VERSION}"
+          gh workflow run "Release Binaries" --ref "${TAG}"
