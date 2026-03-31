@@ -58,7 +58,7 @@ struct Progress {
 fn project_progress(project: &Task, store: &ThingsStore) -> Progress {
     if project.in_someday() {
         return Progress {
-            marker: ICONS.anytime,
+            marker: ICONS.project_someday,
             total: 0,
             done: 0,
         };

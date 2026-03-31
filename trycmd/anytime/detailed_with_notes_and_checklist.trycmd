@@ -1,6 +1,6 @@
 ```trycmd
 $ run.sh things3 --today-ts 1774396800 anytime --detailed
-◌ Anytime  (1 tasks)
+≋ Anytime  (1 tasks)
 
   6 ▢ Prepare trip plan
     │ Book train tickets

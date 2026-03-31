@@ -28,63 +28,81 @@ pub const RED: &str = "\x1b[31m";
 
 #[derive(Debug, Clone, Copy)]
 pub struct Icons {
+    // Sidebar/view icons
+    pub inbox: &'static str,
+    pub today: &'static str,
+    pub upcoming: &'static str,
+    pub anytime: &'static str,
+
+    // Task and grouping icons
     pub task_open: &'static str,
     pub task_done: &'static str,
     pub task_someday: &'static str,
     pub task_canceled: &'static str,
-    pub evening: &'static str,
-    pub today: &'static str,
     pub today_staged: &'static str,
     pub project: &'static str,
+    pub project_someday: &'static str,
     pub area: &'static str,
     pub tag: &'static str,
-    pub inbox: &'static str,
-    pub anytime: &'static str,
-    pub upcoming: &'static str,
+    pub evening: &'static str,
+
+    // Project progress icons
     pub progress_empty: &'static str,
     pub progress_quarter: &'static str,
     pub progress_half: &'static str,
     pub progress_three_quarter: &'static str,
     pub progress_full: &'static str,
+
+    // Status/event icons
     pub deadline: &'static str,
     pub done: &'static str,
     pub incomplete: &'static str,
     pub canceled: &'static str,
     pub deleted: &'static str,
+
+    // Checklist icons
     pub checklist_open: &'static str,
     pub checklist_done: &'static str,
     pub checklist_canceled: &'static str,
+
+    // Misc UI glyphs
     pub separator: &'static str,
     pub divider: &'static str,
 }
 
 pub const ICONS: Icons = Icons {
+    inbox: "⬓",
+    today: "⭑",
+    upcoming: "▷",
+    anytime: "≋",
+
     task_open: "▢",
     task_done: "◼",
     task_someday: "⬚",
     task_canceled: "☒",
-    evening: "☽",
-    today: "⭑",
     today_staged: "●",
     project: "●",
+    project_someday: "◌",
     area: "◆",
     tag: "⌗",
-    inbox: "⬓",
-    anytime: "◌",
-    upcoming: "▷",
+    evening: "☽",
+
     progress_empty: "◯",
     progress_quarter: "◔",
     progress_half: "◑",
     progress_three_quarter: "◕",
     progress_full: "◉",
+
     deadline: "⚑",
     done: "✓",
     incomplete: "↺",
     canceled: "☒",
     deleted: "×",
+
     checklist_open: "○",
     checklist_done: "●",
     checklist_canceled: "×",
+
     separator: "·",
     divider: "─",
 };
