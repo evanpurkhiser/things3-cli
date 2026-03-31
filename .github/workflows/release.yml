@@ -106,8 +106,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-13
-            asset_name: things3-darwin-x86
           - runner: macos-14
             asset_name: things3-darwin-aarch
 
