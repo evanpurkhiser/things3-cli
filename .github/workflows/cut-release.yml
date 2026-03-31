@@ -48,12 +48,18 @@ jobs:
         run: |
           sed -i -E "0,/^version = \"[^\"]+\"/s//version = \"${VERSION}\"/" Cargo.toml
 
+      - name: Update Cargo.lock root package version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          perl -0777 -i -pe 's/(\[\[package\]\]\nname = "things3-cloud"\nversion = ")([^"]+)(")/${1}$ENV{VERSION}${3}/' Cargo.lock
+
       - name: Commit and tag release
         env:
           VERSION: ${{ inputs.version }}
         run: |
           TAG="v${VERSION}"
-          git add Cargo.toml
+          git add Cargo.toml Cargo.lock
           git -c user.name='github-actions[bot]' -c user.email='github-actions[bot]@users.noreply.github.com' commit -m "release ${TAG}"
           git tag -a "${TAG}" -m "Release ${TAG}"
 
