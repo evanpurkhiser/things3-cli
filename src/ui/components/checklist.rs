@@ -19,9 +19,9 @@ pub fn CheckList<'a>(props: &CheckListProps<'a>) -> impl Into<AnyElement<'a>> {
     let prefix_len = prefix_len(items, props.show_ids);
 
     let margin_left = if props.shift_left && prefix_len > 0 {
-        Margin::Length(-(prefix_len as i32 + 3))
+        -(prefix_len as i32 + 3)
     } else {
-        Margin::Length(0)
+        0
     };
 
     let items = items.iter().enumerate().map(move |(i, item)| {
