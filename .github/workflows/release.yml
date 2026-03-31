@@ -177,8 +177,7 @@ jobs:
     if: needs.release_meta.outputs.is_nightly == 'false'
     permissions:
       contents: read
-    env:
-      CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+      id-token: write
 
     steps:
       - name: Checkout tagged commit
@@ -189,10 +188,9 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Publish to crates.io
-        if: env.CARGO_REGISTRY_TOKEN != ''
-        run: cargo publish --locked
+      - name: Authenticate with crates.io (trusted publishing)
+        id: crates_io_auth
+        uses: rust-lang/crates-io-auth-action@v1
 
-      - name: Skip publish (token not configured)
-        if: env.CARGO_REGISTRY_TOKEN == ''
-        run: echo "CRATES_IO_TOKEN is not configured; skipping crates.io publish"
+      - name: Publish to crates.io
+        run: cargo publish --locked --token "${{ steps.crates_io_auth.outputs.token }}"
