@@ -1,12 +1,18 @@
 use crate::client::ThingsCloudClient;
-use crate::store::{RawState, fold_item};
+use crate::store::{fold_item, RawState};
 use crate::wire::wire_object::WireItem;
-use anyhow::{Context, Result, anyhow};
+use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
+
+#[derive(Debug, Clone, Default)]
+struct SyncSnapshot {
+    history_key: Option<String>,
+    head_index: i64,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 struct CursorData {
@@ -182,6 +188,7 @@ pub fn fold_state_from_append_log(cache_dir: &Path) -> Result<RawState> {
     file.seek(SeekFrom::Start(byte_offset))?;
     let mut reader = BufReader::new(file);
     let mut line = String::new();
+    let mut safe_offset = byte_offset;
 
     loop {
         line.clear();
@@ -189,19 +196,25 @@ pub fn fold_state_from_append_log(cache_dir: &Path) -> Result<RawState> {
         if read == 0 {
             break;
         }
+
+        if !line.ends_with('\n') {
+            break;
+        }
+
         let stripped = line.trim();
         if stripped.is_empty() {
+            safe_offset = reader.stream_position()?;
             continue;
         }
         let item: WireItem = serde_json::from_str(stripped)
             .with_context(|| format!("Corrupt log entry at {}", log_path.display()))?;
         fold_item(item, &mut state);
         new_lines += 1;
+        safe_offset = reader.stream_position()?;
     }
 
-    let end_offset = reader.stream_position()?;
     if new_lines > 0 {
-        write_state_cache(cache_dir, &state, end_offset)?;
+        write_state_cache(cache_dir, &state, safe_offset)?;
     }
 
     Ok(state)
@@ -211,7 +224,26 @@ pub fn get_state_with_append_log(
     client: &mut ThingsCloudClient,
     cache_dir: PathBuf,
 ) -> Result<RawState> {
-    sync_append_log(client, &cache_dir)?;
+    let mut sync_client = client.clone();
+    let sync_cache_dir = cache_dir.clone();
+
+    let sync_worker = std::thread::spawn(move || -> Result<SyncSnapshot> {
+        sync_append_log(&mut sync_client, &sync_cache_dir)?;
+        Ok(SyncSnapshot {
+            history_key: sync_client.history_key,
+            head_index: sync_client.head_index,
+        })
+    });
+
+    let _stale_state = fold_state_from_append_log(&cache_dir)?;
+
+    let sync_snapshot = sync_worker
+        .join()
+        .map_err(|_| anyhow!("sync worker panicked"))??;
+
+    client.history_key = sync_snapshot.history_key;
+    client.head_index = sync_snapshot.head_index;
+
     fold_state_from_append_log(&cache_dir)
 }
 
@@ -225,4 +257,45 @@ pub fn read_cached_head_index(cache_dir: &Path) -> i64 {
 
 pub fn sync_append_log_or_err(client: &mut ThingsCloudClient, cache_dir: &Path) -> Result<()> {
     sync_append_log(client, cache_dir).map_err(|e| anyhow!(e.to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fold_state_ignores_trailing_partial_line() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let cache_dir = temp_dir.path();
+        let log_path = cache_dir.join("things.log");
+
+        let line_one = r#"{"3C6BBD49-8D11-4FFF-8B0E-B8F33FA9C00A":{"t":0,"e":"Settings5","p":{}}}"#;
+        let line_two = r#"{"4C6BBD49-8D11-4FFF-8B0E-B8F33FA9C00B":{"t":0,"e":"Settings5","p":{}}}"#;
+        let split_at = line_two.len() / 2;
+
+        fs::write(
+            &log_path,
+            format!("{}\n{}", line_one, &line_two[..split_at]),
+        )
+        .expect("seed log");
+
+        let first_state = fold_state_from_append_log(cache_dir).expect("first fold");
+        assert_eq!(first_state.len(), 1);
+
+        let (_, first_offset) = read_state_cache(cache_dir);
+        assert_eq!(first_offset, (line_one.len() + 1) as u64);
+
+        let mut fp = OpenOptions::new()
+            .append(true)
+            .open(&log_path)
+            .expect("open log for append");
+        writeln!(fp, "{}", &line_two[split_at..]).expect("append line remainder");
+
+        let second_state = fold_state_from_append_log(cache_dir).expect("second fold");
+        assert_eq!(second_state.len(), 2);
+
+        let expected_offset = fs::metadata(&log_path).expect("log metadata").len();
+        let (_, second_offset) = read_state_cache(cache_dir);
+        assert_eq!(second_offset, expected_offset);
+    }
 }

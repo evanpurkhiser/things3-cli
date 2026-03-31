@@ -154,33 +154,24 @@ pub fn task6_note(value: &str) -> TaskNotes {
 
 pub fn resolve_single_tag(store: &ThingsStore, identifier: &str) -> (Option<Tag>, String) {
     let identifier = identifier.trim();
+    if identifier.is_empty() {
+        return (None, format!("Tag not found: {identifier}"));
+    }
+
+    let (resolved, err) = resolve_tag_ids(store, identifier);
+    if !err.is_empty() {
+        return (None, err);
+    }
+    if resolved.len() != 1 {
+        return (None, format!("Tag not found: {identifier}"));
+    }
+
     let all_tags = store.tags();
-
-    let exact = all_tags
-        .iter()
-        .filter(|t| t.title.eq_ignore_ascii_case(identifier))
-        .cloned()
-        .collect::<Vec<_>>();
-    if exact.len() == 1 {
-        return (exact.first().cloned(), String::new());
+    let tag = all_tags.into_iter().find(|t| t.uuid == resolved[0]);
+    match tag {
+        Some(tag) => (Some(tag), String::new()),
+        None => (None, format!("Tag not found: {identifier}")),
     }
-    if exact.len() > 1 {
-        return (None, format!("Ambiguous tag title: {identifier}"));
-    }
-
-    let prefix = all_tags
-        .iter()
-        .filter(|t| t.uuid.starts_with(identifier))
-        .cloned()
-        .collect::<Vec<_>>();
-    if prefix.len() == 1 {
-        return (prefix.first().cloned(), String::new());
-    }
-    if prefix.len() > 1 {
-        return (None, format!("Ambiguous tag UUID prefix: {identifier}"));
-    }
-
-    (None, format!("Tag not found: {identifier}"))
 }
 
 pub fn resolve_tag_ids(store: &ThingsStore, raw_tags: &str) -> (Vec<ThingsId>, String) {
@@ -198,42 +189,42 @@ pub fn resolve_tag_ids(store: &ThingsStore, raw_tags: &str) -> (Vec<ThingsId>, S
     let mut seen = HashSet::new();
 
     for token in tokens {
-        let exact = all_tags
-            .iter()
-            .filter(|tag| tag.title.eq_ignore_ascii_case(token))
-            .cloned()
-            .collect::<Vec<_>>();
-
-        if exact.len() == 1 {
-            let tag_uuid = exact[0].uuid.clone();
-            if seen.insert(tag_uuid.clone()) {
-                resolved.push(tag_uuid);
-            }
-            continue;
+        let tag_uuid = match resolve_single_tag_id(&all_tags, token) {
+            Ok(tag_uuid) => tag_uuid,
+            Err(err) => return (Vec::new(), err),
+        };
+        if seen.insert(tag_uuid.clone()) {
+            resolved.push(tag_uuid);
         }
-        if exact.len() > 1 {
-            return (Vec::new(), format!("Ambiguous tag title: {token}"));
-        }
-
-        let prefix = all_tags
-            .iter()
-            .filter(|tag| tag.uuid.starts_with(token))
-            .cloned()
-            .collect::<Vec<_>>();
-
-        if prefix.len() == 1 {
-            let tag_uuid = prefix[0].uuid.clone();
-            if seen.insert(tag_uuid.clone()) {
-                resolved.push(tag_uuid);
-            }
-            continue;
-        }
-        if prefix.len() > 1 {
-            return (Vec::new(), format!("Ambiguous tag UUID prefix: {token}"));
-        }
-
-        return (Vec::new(), format!("Tag not found: {token}"));
     }
 
     (resolved, String::new())
+}
+
+fn resolve_single_tag_id(tags: &[Tag], token: &str) -> Result<ThingsId, String> {
+    let exact = tags
+        .iter()
+        .filter(|tag| tag.title.eq_ignore_ascii_case(token))
+        .map(|tag| tag.uuid.clone())
+        .collect::<Vec<_>>();
+    if exact.len() == 1 {
+        return Ok(exact[0].clone());
+    }
+    if exact.len() > 1 {
+        return Err(format!("Ambiguous tag title: {token}"));
+    }
+
+    let prefix = tags
+        .iter()
+        .filter(|tag| tag.uuid.starts_with(token))
+        .map(|tag| tag.uuid.clone())
+        .collect::<Vec<_>>();
+    if prefix.len() == 1 {
+        return Ok(prefix[0].clone());
+    }
+    if prefix.len() > 1 {
+        return Err(format!("Ambiguous tag UUID prefix: {token}"));
+    }
+
+    Err(format!("Tag not found: {token}"))
 }
