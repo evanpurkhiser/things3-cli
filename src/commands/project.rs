@@ -50,9 +50,7 @@ impl Command for ProjectArgs {
         let headings = store
             .tasks_by_uuid
             .values()
-            .filter(|t| {
-                t.is_heading() && !t.trashed && t.project.as_ref() == Some(&project.uuid)
-            })
+            .filter(|t| t.is_heading() && !t.trashed && t.project.as_ref() == Some(&project.uuid))
             .cloned()
             .map(|h| (h.uuid.clone(), h))
             .collect::<BTreeMap<_, _>>();

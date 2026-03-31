@@ -1,7 +1,7 @@
 use crate::app::Cli;
 use crate::arg_types::IdentifierToken;
 use crate::commands::Command;
-use crate::common::{colored, DIM, GREEN, ICONS};
+use crate::common::{DIM, GREEN, ICONS, colored};
 use crate::wire::checklist::ChecklistItemPatch;
 use crate::wire::recurrence::RecurrenceType;
 use crate::wire::task::{TaskPatch, TaskStatus};
@@ -398,7 +398,7 @@ impl Command for MarkArgs {
 mod tests {
     use super::*;
     use crate::ids::ThingsId;
-    use crate::store::{fold_items, ThingsStore};
+    use crate::store::{ThingsStore, fold_items};
     use crate::wire::checklist::ChecklistItemProps;
     use crate::wire::recurrence::{RecurrenceRule, RecurrenceType};
     use crate::wire::task::{TaskProps, TaskStart, TaskStatus, TaskType};
@@ -613,7 +613,9 @@ mod tests {
         );
         assert_eq!(
             errs,
-            vec!["Recurring instance has 2 template references; expected exactly 1. (Recurring instance)"]
+            vec![
+                "Recurring instance has 2 template references; expected exactly 1. (Recurring instance)"
+            ]
         );
     }
 }

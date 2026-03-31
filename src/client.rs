@@ -1,10 +1,10 @@
-use crate::store::{fold_item, RawState};
+use crate::store::{RawState, fold_item};
 use crate::wire::task::{TaskPatch, TaskStatus};
 use crate::wire::wire_object::WireItem;
 use crate::wire::wire_object::{EntityType, WireObject};
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use reqwest::blocking::Client;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 use urlencoding::encode;

@@ -1,5 +1,5 @@
-use crate::ids::things_id::base58_encode_fixed;
 use crate::ids::ThingsId;
+use crate::ids::things_id::base58_encode_fixed;
 use std::collections::HashMap;
 
 pub fn lcp_len(a: &str, b: &str) -> usize {

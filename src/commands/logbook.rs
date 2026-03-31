@@ -14,9 +14,15 @@ use std::sync::Arc;
 pub struct LogbookArgs {
     #[command(flatten)]
     pub detailed: DetailedArgs,
-    #[arg(long = "from", help = "Show items completed on/after this date (YYYY-MM-DD)")]
+    #[arg(
+        long = "from",
+        help = "Show items completed on/after this date (YYYY-MM-DD)"
+    )]
     pub from_date: Option<String>,
-    #[arg(long = "to", help = "Show items completed on/before this date (YYYY-MM-DD)")]
+    #[arg(
+        long = "to",
+        help = "Show items completed on/before this date (YYYY-MM-DD)"
+    )]
     pub to_date: Option<String>,
 }
 

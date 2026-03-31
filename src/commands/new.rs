@@ -18,9 +18,16 @@ use std::collections::BTreeMap;
 pub struct NewArgs {
     /// Task title
     pub title: String,
-    #[arg(long = "in", default_value = "inbox", help = "Container: inbox, clear, project UUID/prefix, or area UUID/prefix")]
+    #[arg(
+        long = "in",
+        default_value = "inbox",
+        help = "Container: inbox, clear, project UUID/prefix, or area UUID/prefix"
+    )]
     pub in_target: String,
-    #[arg(long, help = "Schedule: anytime, someday, today, evening, or YYYY-MM-DD")]
+    #[arg(
+        long,
+        help = "Schedule: anytime, someday, today, evening, or YYYY-MM-DD"
+    )]
     pub when: Option<String>,
     #[arg(long = "before", help = "Insert before this sibling task UUID/prefix")]
     pub before_id: Option<String>,
@@ -51,7 +58,10 @@ fn task_bucket(task: &Task, store: &crate::store::ThingsStore) -> Vec<String> {
     if task.is_heading() {
         return vec![
             "heading".to_string(),
-            task.project.clone().map(|v| v.to_string()).unwrap_or_default(),
+            task.project
+                .clone()
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
         ];
     }
     if task.is_project() {
@@ -241,7 +251,9 @@ fn build_new_plan(
             let parsed = match parse_day(Some(when), "--when") {
                 Ok(Some(day)) => day,
                 Ok(None) => {
-                    return Err("--when requires anytime, someday, today, or YYYY-MM-DD".to_string());
+                    return Err(
+                        "--when requires anytime, someday, today, or YYYY-MM-DD".to_string()
+                    );
                 }
                 Err(err) => return Err(err),
             };
@@ -276,16 +288,23 @@ fn build_new_plan(
     let target_bucket = props_bucket(&props);
 
     if let Some(anchor) = &anchor
-        && !anchor_is_today && task_bucket(anchor, store) != target_bucket
+        && !anchor_is_today
+        && task_bucket(anchor, store) != target_bucket
     {
-        return Err("Cannot place new task relative to an item in a different container/list.".to_string());
+        return Err(
+            "Cannot place new task relative to an item in a different container/list.".to_string(),
+        );
     }
 
     let mut index_updates: Vec<(String, i32, String)> = Vec::new();
     let mut siblings = store
         .tasks_by_uuid
         .values()
-        .filter(|t| !t.trashed && t.status == TaskStatus::Incomplete && task_bucket(t, store) == target_bucket)
+        .filter(|t| {
+            !t.trashed
+                && t.status == TaskStatus::Incomplete
+                && task_bucket(t, store) == target_bucket
+        })
         .cloned()
         .collect::<Vec<_>>();
     siblings.sort_by_key(|t| (t.index, t.uuid.clone()));
@@ -298,7 +317,11 @@ fn build_new_plan(
         let Some(anchor_pos) = anchor_pos else {
             return Err("Anchor not found in target list.".to_string());
         };
-        structural_insert_at = if args.before_id.is_some() { anchor_pos } else { anchor_pos + 1 };
+        structural_insert_at = if args.before_id.is_some() {
+            anchor_pos
+        } else {
+            anchor_pos + 1
+        };
     }
 
     let (structural_ix, structural_updates) = plan_ix_insert(&siblings, structural_insert_at);
@@ -308,15 +331,9 @@ fn build_new_plan(
     let new_is_today = props.start_location == TaskStart::Anytime
         && props.scheduled_date.map_or(false, |sr| sr <= today_ts);
     if new_is_today && anchor_is_today {
-        let mut section_evening = if props.evening_bit != 0 {
-            1
-        } else {
-            0
-        };
+        let mut section_evening = if props.evening_bit != 0 { 1 } else { 0 };
 
-        if anchor_is_today
-            && let Some(anchor) = &anchor
-        {
+        if anchor_is_today && let Some(anchor) = &anchor {
             section_evening = if anchor.evening { 1 } else { 0 };
             props.evening_bit = section_evening;
         }
@@ -344,7 +361,11 @@ fn build_new_plan(
             && (if anchor.evening { 1 } else { 0 }) == section_evening
             && let Some(anchor_pos) = today_siblings.iter().position(|t| t.uuid == anchor.uuid)
         {
-            today_insert_at = if args.before_id.is_some() { anchor_pos } else { anchor_pos + 1 };
+            today_insert_at = if args.before_id.is_some() {
+                anchor_pos
+            } else {
+                anchor_pos + 1
+            };
         }
 
         let prev_today = if today_insert_at > 0 {
@@ -380,11 +401,14 @@ fn build_new_plan(
         use crate::wire::task::TaskPatch;
         changes.insert(
             task_uuid,
-            WireObject::update(EntityType::from(task_entity), TaskPatch {
-                sort_index: Some(task_index),
-                modification_date: Some(now),
-                ..Default::default()
-            }),
+            WireObject::update(
+                EntityType::from(task_entity),
+                TaskPatch {
+                    sort_index: Some(task_index),
+                    modification_date: Some(now),
+                    ..Default::default()
+                },
+            ),
         );
     }
 
@@ -457,7 +481,15 @@ mod tests {
         ThingsStore::from_raw_state(&fold_items([item]))
     }
 
-    fn task(uuid: &str, title: &str, st: i32, ix: i32, sr: Option<i64>, tir: Option<i64>, ti: i32) -> (String, WireObject) {
+    fn task(
+        uuid: &str,
+        title: &str,
+        st: i32,
+        ix: i32,
+        sr: Option<i64>,
+        tir: Option<i64>,
+        ti: i32,
+    ) -> (String, WireObject) {
         (
             uuid.to_string(),
             WireObject::create(

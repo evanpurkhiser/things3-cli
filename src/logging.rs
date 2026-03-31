@@ -2,7 +2,7 @@ use clap::ValueEnum;
 use std::sync::OnceLock;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::EnvFilter;
-use tracing_subscriber::{prelude::*, Layer};
+use tracing_subscriber::{Layer, prelude::*};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, ValueEnum, Default)]
 #[clap(rename_all = "kebab-case")]

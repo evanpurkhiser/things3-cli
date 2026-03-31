@@ -46,9 +46,15 @@ pub struct DetailedArgs {
 
 #[derive(Debug, Default, Clone, Args)]
 pub struct TagDeltaArgs {
-    #[arg(long = "add-tags", help = "Comma-separated tags to add (titles or UUID prefixes)")]
+    #[arg(
+        long = "add-tags",
+        help = "Comma-separated tags to add (titles or UUID prefixes)"
+    )]
     pub add_tags: Option<String>,
-    #[arg(long = "remove-tags", help = "Comma-separated tags to remove (titles or UUID prefixes)")]
+    #[arg(
+        long = "remove-tags",
+        help = "Comma-separated tags to remove (titles or UUID prefixes)"
+    )]
     pub remove_tags: Option<String>,
 }
 

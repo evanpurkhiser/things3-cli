@@ -50,6 +50,7 @@ pub fn ProjectsView<'a>(props: &'a ProjectsViewProps) -> impl Into<AnyElement<'a
                 }
             }
         }
+        .into_any()
     } else {
         element!(Fragment).into_any()
     };

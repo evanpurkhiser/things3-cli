@@ -2,7 +2,7 @@ use crate::commands::{Command, Commands};
 use crate::dirs::append_log_dir;
 use crate::log_cache::{fold_state_from_append_log, get_state_with_append_log};
 use crate::logging;
-use crate::store::{fold_items, RawState, ThingsStore};
+use crate::store::{RawState, ThingsStore, fold_items};
 use crate::wire::wire_object::WireItem;
 use crate::{auth::load_auth, client::ThingsCloudClient};
 use anyhow::{Context, Result};

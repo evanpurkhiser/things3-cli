@@ -1,7 +1,7 @@
 use crate::app::Cli;
 use crate::arg_types::IdentifierToken;
 use crate::commands::{Command, TagDeltaArgs};
-use crate::common::{colored, resolve_tag_ids, task6_note, DIM, GREEN, ICONS};
+use crate::common::{DIM, GREEN, ICONS, colored, resolve_tag_ids, task6_note};
 use crate::ids::ThingsId;
 use crate::wire::checklist::{ChecklistItemPatch, ChecklistItemProps};
 use crate::wire::notes::{StructuredTaskNotes, TaskNotes};
@@ -18,17 +18,35 @@ pub struct EditArgs {
     pub task_ids: Vec<IdentifierToken>,
     #[arg(long, help = "Replace title (single task only)")]
     pub title: Option<String>,
-    #[arg(long, help = "Replace notes (single task only; use empty string to clear)")]
+    #[arg(
+        long,
+        help = "Replace notes (single task only; use empty string to clear)"
+    )]
     pub notes: Option<String>,
-    #[arg(long = "move", help = "Move to Inbox, clear, project UUID/prefix, or area UUID/prefix")]
+    #[arg(
+        long = "move",
+        help = "Move to Inbox, clear, project UUID/prefix, or area UUID/prefix"
+    )]
     pub move_target: Option<String>,
     #[command(flatten)]
     pub tag_delta: TagDeltaArgs,
-    #[arg(long = "add-checklist", value_name = "TITLE", help = "Add a checklist item (repeatable, single task only)")]
+    #[arg(
+        long = "add-checklist",
+        value_name = "TITLE",
+        help = "Add a checklist item (repeatable, single task only)"
+    )]
     pub add_checklist: Vec<String>,
-    #[arg(long = "remove-checklist", value_name = "IDS", help = "Remove checklist items by comma-separated short IDs (single task only)")]
+    #[arg(
+        long = "remove-checklist",
+        value_name = "IDS",
+        help = "Remove checklist items by comma-separated short IDs (single task only)"
+    )]
     pub remove_checklist: Option<String>,
-    #[arg(long = "rename-checklist", value_name = "ID:TITLE", help = "Rename a checklist item: short-id:new title (repeatable, single task only)")]
+    #[arg(
+        long = "rename-checklist",
+        value_name = "ID:TITLE",
+        help = "Rename a checklist item: short-id:new title (repeatable, single task only)"
+    )]
     pub rename_checklist: Vec<String>,
 }
 
@@ -102,7 +120,11 @@ impl Command for EditArgs {
             return Ok(());
         }
 
-        let label_str = colored(&format!("({})", plan.labels.join(", ")), &[DIM], cli.no_color);
+        let label_str = colored(
+            &format!("({})", plan.labels.join(", ")),
+            &[DIM],
+            cli.no_color,
+        );
         for task in plan.tasks {
             let title_display = plan
                 .changes
@@ -198,7 +220,9 @@ fn build_edit_plan(
                 ));
             }
             if project_opt.is_some() && project_uuid.is_none() {
-                return Err("--move target must be Inbox, clear, a project ID, or an area ID.".to_string());
+                return Err(
+                    "--move target must be Inbox, clear, a project ID, or an area ID.".to_string(),
+                );
             }
 
             if let Some(project_uuid) = project_uuid {
@@ -351,11 +375,14 @@ fn build_edit_plan(
                 }
                 changes.insert(
                     matches[0].uuid.to_string(),
-                    WireObject::update(EntityType::ChecklistItem3, ChecklistItemPatch {
-                        title: Some(new_title.to_string()),
-                        modification_date: Some(now),
-                        ..Default::default()
-                    }),
+                    WireObject::update(
+                        EntityType::ChecklistItem3,
+                        ChecklistItemPatch {
+                            title: Some(new_title.to_string()),
+                            modification_date: Some(now),
+                            ..Default::default()
+                        },
+                    ),
                 );
             }
             if !labels.iter().any(|l| l == "rename-checklist") {
@@ -377,15 +404,18 @@ fn build_edit_plan(
                 }
                 changes.insert(
                     next_id(),
-                    WireObject::create(EntityType::ChecklistItem3, ChecklistItemProps {
-                        title: title.to_string(),
-                        task_ids: vec![task.uuid.clone()],
-                        status: TaskStatus::Incomplete,
-                        sort_index: max_ix + idx as i32 + 1,
-                        creation_date: Some(now),
-                        modification_date: Some(now),
-                        ..Default::default()
-                    }),
+                    WireObject::create(
+                        EntityType::ChecklistItem3,
+                        ChecklistItemProps {
+                            title: title.to_string(),
+                            task_ids: vec![task.uuid.clone()],
+                            status: TaskStatus::Incomplete,
+                            sort_index: max_ix + idx as i32 + 1,
+                            creation_date: Some(now),
+                            modification_date: Some(now),
+                            ..Default::default()
+                        },
+                    ),
                 );
             }
             if !labels.iter().any(|l| l == "add-checklist") {
@@ -466,11 +496,7 @@ mod tests {
         )
     }
 
-    fn task_with(
-        uuid: &str,
-        title: &str,
-        tag_ids: Vec<&str>,
-    ) -> (String, WireObject) {
+    fn task_with(uuid: &str, title: &str, tag_ids: Vec<&str>) -> (String, WireObject) {
         (
             uuid.to_string(),
             WireObject::create(
@@ -676,7 +702,10 @@ mod tests {
         let mut id_gen = || "X".to_string();
         let plan = build_edit_plan(
             &EditArgs {
-                task_ids: vec![IdentifierToken::from(TASK_UUID), IdentifierToken::from(TASK_UUID2)],
+                task_ids: vec![
+                    IdentifierToken::from(TASK_UUID),
+                    IdentifierToken::from(TASK_UUID2),
+                ],
                 title: None,
                 notes: None,
                 move_target: Some(PROJECT_UUID.to_string()),
@@ -697,7 +726,10 @@ mod tests {
 
         let err = build_edit_plan(
             &EditArgs {
-                task_ids: vec![IdentifierToken::from(TASK_UUID), IdentifierToken::from(TASK_UUID2)],
+                task_ids: vec![
+                    IdentifierToken::from(TASK_UUID),
+                    IdentifierToken::from(TASK_UUID2),
+                ],
                 title: Some("New".to_string()),
                 notes: None,
                 move_target: None,
@@ -722,11 +754,7 @@ mod tests {
         let tag1 = "WukwpDdL5Z88nX3okGMKTC";
         let tag2 = "JiqwiDaS3CAyjCmHihBDnB";
         let store = build_store(vec![
-            task_with(
-                TASK_UUID,
-                "A",
-                vec![tag1],
-            ),
+            task_with(TASK_UUID, "A", vec![tag1]),
             tag(tag1, "Work"),
             tag(tag2, "Focus"),
         ]);
@@ -845,7 +873,10 @@ mod tests {
         .expect_err("project edit reject");
         assert_eq!(err, "Use 'projects edit' to edit a project.");
 
-        let store = build_store(vec![task(TASK_UUID, "Movable"), task(PROJECT_UUID, "Not a project")]);
+        let store = build_store(vec![
+            task(TASK_UUID, "Movable"),
+            task(PROJECT_UUID, "Not a project"),
+        ]);
         let err = build_edit_plan(
             &EditArgs {
                 task_ids: vec![IdentifierToken::from(TASK_UUID)],
@@ -913,7 +944,10 @@ mod tests {
 
         let err = build_edit_plan(
             &EditArgs {
-                task_ids: vec![IdentifierToken::from(TASK_UUID), IdentifierToken::from(TASK_UUID2)],
+                task_ids: vec![
+                    IdentifierToken::from(TASK_UUID),
+                    IdentifierToken::from(TASK_UUID2),
+                ],
                 title: None,
                 notes: None,
                 move_target: None,

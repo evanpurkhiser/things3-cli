@@ -1,6 +1,6 @@
 use crate::app::Cli;
 use crate::commands::Command;
-use crate::common::{colored, day_to_timestamp, parse_day, DIM, GREEN, ICONS};
+use crate::common::{DIM, GREEN, ICONS, colored, day_to_timestamp, parse_day};
 use crate::wire::task::{TaskPatch, TaskStart};
 use crate::wire::wire_object::{EntityType, WireObject};
 use anyhow::Result;
@@ -182,7 +182,7 @@ impl Command for ScheduleArgs {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::store::{fold_items, ThingsStore};
+    use crate::store::{ThingsStore, fold_items};
     use crate::wire::task::{TaskProps, TaskStart, TaskStatus, TaskType};
     use crate::wire::wire_object::WireItem;
     use crate::wire::wire_object::{EntityType, WireObject};

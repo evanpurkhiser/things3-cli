@@ -1,7 +1,7 @@
 use crate::client::ThingsCloudClient;
-use crate::store::{fold_item, RawState};
+use crate::store::{RawState, fold_item};
 use crate::wire::wire_object::WireItem;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs::{self, File, OpenOptions};

@@ -7,8 +7,8 @@ pub use entities::{
 };
 pub use state::{RawState, fold_item, fold_items};
 
-use crate::ids::matching::{prefix_matches, shortest_unique_prefixes};
 use crate::ids::ThingsId;
+use crate::ids::matching::{prefix_matches, shortest_unique_prefixes};
 use crate::wire::task::{TaskStart, TaskStatus, TaskType};
 use crate::wire::wire_object::EntityType;
 use chrono::{DateTime, FixedOffset, Local, TimeZone, Utc};
@@ -141,11 +141,16 @@ impl ThingsStore {
                     };
                     let tag = self.parse_tag(uuid, props);
                     if !tag.title.is_empty() {
-                        self.tags_by_title.insert(tag.title.clone(), tag.uuid.clone());
+                        self.tags_by_title
+                            .insert(tag.title.clone(), tag.uuid.clone());
                     }
                     self.tags_by_uuid.insert(uuid.clone(), tag);
                 }
-                Some(EntityType::ChecklistItem | EntityType::ChecklistItem2 | EntityType::ChecklistItem3) => {
+                Some(
+                    EntityType::ChecklistItem
+                    | EntityType::ChecklistItem2
+                    | EntityType::ChecklistItem3,
+                ) => {
                     if let StateProperties::ChecklistItem(props) = &obj.properties {
                         checklist_items.push(self.parse_checklist_item(uuid, props));
                     }
@@ -157,7 +162,10 @@ impl ThingsStore {
         let mut by_task: HashMap<ThingsId, Vec<ChecklistItem>> = HashMap::new();
         for item in checklist_items {
             if self.tasks_by_uuid.contains_key(&item.task_uuid) {
-                by_task.entry(item.task_uuid.clone()).or_default().push(item);
+                by_task
+                    .entry(item.task_uuid.clone())
+                    .or_default()
+                    .push(item);
             }
         }
 
@@ -387,7 +395,8 @@ impl ThingsStore {
             .values()
             .filter(|task| {
                 if task.trashed
-                    || !(task.status == TaskStatus::Completed || task.status == TaskStatus::Canceled)
+                    || !(task.status == TaskStatus::Completed
+                        || task.status == TaskStatus::Canceled)
                 {
                     return false;
                 }
@@ -635,23 +644,41 @@ impl ThingsStore {
             return (None, msg, out);
         }
 
-        (None, format!("{} not found: {}", label, identifier), Vec::new())
+        (
+            None,
+            format!("{} not found: {}", label, identifier),
+            Vec::new(),
+        )
     }
 
     pub fn resolve_mark_identifier(&self, identifier: &str) -> (Option<Task>, String, Vec<Task>) {
         let markable: HashMap<ThingsId, Task> = self
             .markable_ids
             .iter()
-            .filter_map(|uid| self.tasks_by_uuid.get(uid).map(|t| (uid.clone(), t.clone())))
+            .filter_map(|uid| {
+                self.tasks_by_uuid
+                    .get(uid)
+                    .map(|t| (uid.clone(), t.clone()))
+            })
             .collect();
         self.resolve_prefix(identifier, &markable, &self.markable_ids_sorted, "Item")
     }
 
     pub fn resolve_area_identifier(&self, identifier: &str) -> (Option<Area>, String, Vec<Area>) {
-        self.resolve_prefix(identifier, &self.areas_by_uuid, &self.area_ids_sorted, "Area")
+        self.resolve_prefix(
+            identifier,
+            &self.areas_by_uuid,
+            &self.area_ids_sorted,
+            "Area",
+        )
     }
 
     pub fn resolve_task_identifier(&self, identifier: &str) -> (Option<Task>, String, Vec<Task>) {
-        self.resolve_prefix(identifier, &self.tasks_by_uuid, &self.task_ids_sorted, "Task")
+        self.resolve_prefix(
+            identifier,
+            &self.tasks_by_uuid,
+            &self.task_ids_sorted,
+            "Task",
+        )
     }
 }

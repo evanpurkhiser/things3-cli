@@ -35,7 +35,11 @@ impl MatchResult {
     }
 }
 
-fn matches_project_filter(filter: &IdentifierToken, project_uuid: &str, project_title_lower: &str) -> bool {
+fn matches_project_filter(
+    filter: &IdentifierToken,
+    project_uuid: &str,
+    project_title_lower: &str,
+) -> bool {
     let token = filter.as_str();
     let lowered = token.to_ascii_lowercase();
     project_uuid.starts_with(token) || project_title_lower.contains(&lowered)
@@ -49,7 +53,9 @@ fn matches_area_filter(filter: &IdentifierToken, area_uuid: &str, area_title_low
 
 #[derive(Debug, Default, Args)]
 #[command(about = "Search and filter tasks.")]
-#[command(after_help = "Date filter syntax:  --deadline OP DATE\n  OP is one of: >  <  >=  <=  =\n  DATE is YYYY-MM-DD or a keyword: today, tomorrow, yesterday\n\n  Examples:\n    --deadline \"<today\"          overdue tasks\n    --deadline \">=2026-01-01\"    deadline on or after date\n    --created \">=2026-01-01\" --created \"<=2026-03-31\"   date range")]
+#[command(
+    after_help = "Date filter syntax:  --deadline OP DATE\n  OP is one of: >  <  >=  <=  =\n  DATE is YYYY-MM-DD or a keyword: today, tomorrow, yesterday\n\n  Examples:\n    --deadline \"<today\"          overdue tasks\n    --deadline \">=2026-01-01\"    deadline on or after date\n    --created \">=2026-01-01\" --created \"<=2026-03-31\"   date range"
+)]
 #[command(group(ArgGroup::new("status").args(["incomplete", "completed", "canceled", "any_status"]).multiple(false)))]
 #[command(group(ArgGroup::new("deadline_presence").args(["has_deadline", "no_deadline"]).multiple(false)))]
 pub struct FindArgs {
@@ -61,7 +67,10 @@ pub struct FindArgs {
     pub incomplete: bool,
     #[arg(long, help = "Also search query against note text")]
     pub notes: bool,
-    #[arg(long, help = "Also search query against checklist item titles; implies --detailed for checklist-only matches")]
+    #[arg(
+        long,
+        help = "Also search query against checklist item titles; implies --detailed for checklist-only matches"
+    )]
     pub checklists: bool,
     #[arg(long, help = "Only completed tasks")]
     pub completed: bool,
@@ -69,11 +78,23 @@ pub struct FindArgs {
     pub canceled: bool,
     #[arg(long = "any-status", help = "Match tasks regardless of status")]
     pub any_status: bool,
-    #[arg(long = "tag", value_name = "TAG", help = "Has this tag (title or UUID prefix); repeatable, OR logic")]
+    #[arg(
+        long = "tag",
+        value_name = "TAG",
+        help = "Has this tag (title or UUID prefix); repeatable, OR logic"
+    )]
     tag_filters: Vec<IdentifierToken>,
-    #[arg(long = "project", value_name = "PROJECT", help = "In this project (title substring or UUID prefix); repeatable, OR logic")]
+    #[arg(
+        long = "project",
+        value_name = "PROJECT",
+        help = "In this project (title substring or UUID prefix); repeatable, OR logic"
+    )]
     project_filters: Vec<IdentifierToken>,
-    #[arg(long = "area", value_name = "AREA", help = "In this area (title substring or UUID prefix); repeatable, OR logic")]
+    #[arg(
+        long = "area",
+        value_name = "AREA",
+        help = "In this area (title substring or UUID prefix); repeatable, OR logic"
+    )]
     area_filters: Vec<IdentifierToken>,
     #[arg(long, help = "In Inbox view")]
     pub inbox: bool,
@@ -89,13 +110,25 @@ pub struct FindArgs {
     pub no_deadline: bool,
     #[arg(long, help = "Only recurring tasks")]
     pub recurring: bool,
-    #[arg(long, value_name = "EXPR", help = "Deadline filter, e.g. '<today' or '>=2026-04-01' (repeatable for range)")]
+    #[arg(
+        long,
+        value_name = "EXPR",
+        help = "Deadline filter, e.g. '<today' or '>=2026-04-01' (repeatable for range)"
+    )]
     pub deadline: Vec<String>,
-    #[arg(long, value_name = "EXPR", help = "Scheduled start date filter (repeatable)")]
+    #[arg(
+        long,
+        value_name = "EXPR",
+        help = "Scheduled start date filter (repeatable)"
+    )]
     pub scheduled: Vec<String>,
     #[arg(long, value_name = "EXPR", help = "Creation date filter (repeatable)")]
     pub created: Vec<String>,
-    #[arg(long = "completed-on", value_name = "EXPR", help = "Completion date filter; implies --completed (repeatable)")]
+    #[arg(
+        long = "completed-on",
+        value_name = "EXPR",
+        help = "Completion date filter; implies --completed (repeatable)"
+    )]
     pub completed_on: Vec<String>,
 }
 
@@ -176,7 +209,11 @@ impl Command for FindArgs {
     }
 }
 
-fn parse_date_value(value: &str, flag: &str, today: &DateTime<Utc>) -> Result<DateTime<Utc>, String> {
+fn parse_date_value(
+    value: &str,
+    flag: &str,
+    today: &DateTime<Utc>,
+) -> Result<DateTime<Utc>, String> {
     let lowered = value.trim().to_ascii_lowercase();
     match lowered.as_str() {
         "today" => Ok(*today),
@@ -198,7 +235,11 @@ fn parse_date_value(value: &str, flag: &str, today: &DateTime<Utc>) -> Result<Da
     }
 }
 
-fn parse_date_expr(raw: &str, flag: &str, today: &DateTime<Utc>) -> Result<(&'static str, DateTime<Utc>), String> {
+fn parse_date_expr(
+    raw: &str,
+    flag: &str,
+    today: &DateTime<Utc>,
+) -> Result<(&'static str, DateTime<Utc>), String> {
     let value = raw.trim();
     let (op, date_part) = if let Some(rest) = value.strip_prefix(">=") {
         (">=", rest)
