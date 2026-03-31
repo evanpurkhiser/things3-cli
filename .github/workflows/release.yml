@@ -37,8 +37,8 @@ jobs:
               echo "EOF"
             } >> "$GITHUB_OUTPUT"
           else
-            echo "tag_name=nightly" >> "$GITHUB_OUTPUT"
-            echo "release_name=Nightly" >> "$GITHUB_OUTPUT"
+            echo "tag_name=latest" >> "$GITHUB_OUTPUT"
+            echo "release_name=Latest" >> "$GITHUB_OUTPUT"
             echo "prerelease=true" >> "$GITHUB_OUTPUT"
             echo "make_latest=false" >> "$GITHUB_OUTPUT"
             echo "is_nightly=true" >> "$GITHUB_OUTPUT"
@@ -152,11 +152,11 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Move nightly tag to current commit
+      - name: Move latest tag to current commit
         if: needs.release_meta.outputs.is_nightly == 'true'
         run: |
-          git tag -f nightly "${GITHUB_SHA}"
-          git push origin refs/tags/nightly --force
+          git tag -f latest "${GITHUB_SHA}"
+          git push origin refs/tags/latest --force
 
       - name: Create or update release
         uses: softprops/action-gh-release@v2
