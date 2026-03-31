@@ -18,21 +18,20 @@ pub fn AreasView<'a>(props: &'a AreasViewProps) -> impl Into<AnyElement<'a>> {
     }
 
     element! {
-        View(flex_direction: FlexDirection::Column) {
+        View(flex_direction: FlexDirection::Column, gap: 1) {
             Text(
                 content: format!("{} Areas  ({})", ICONS.area, props.areas.len()),
                 color: Color::Magenta,
                 weight: Weight::Bold,
                 wrap: TextWrap::NoWrap,
             )
-
-            Text(content: "", wrap: TextWrap::NoWrap)
-
             #(props.areas.iter().map(|area| element! {
-                View(flex_direction: FlexDirection::Row, gap: 1, padding_left: 2) {
-                    Id(id: &area.uuid, length: props.id_prefix_len)
-                    Text(content: ICONS.area, color: Color::DarkGrey, wrap: TextWrap::NoWrap)
-                    Text(content: area.title.clone(), wrap: TextWrap::NoWrap)
+                View(flex_direction: FlexDirection::Row, gap: 2, padding_left: 2) {
+                    View(flex_direction: FlexDirection::Row, gap: 1) {
+                        Id(id: &area.uuid, length: props.id_prefix_len)
+                        Text(content: ICONS.area, color: Color::DarkGrey)
+                        Text(content: area.title.clone(), wrap: TextWrap::NoWrap)
+                    }
                     TagsBadge(tags: area.tags.clone())
                 }
             }))
