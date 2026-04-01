@@ -171,7 +171,6 @@ pub fn TodayView<'a>(hooks: Hooks, props: &TodayViewProps<'a>) -> impl Into<AnyE
             };
 
             let mut regular_blocks: Vec<AnyElement<'a>> = Vec::new();
-            let mut first = true;
 
             if !regular.unscoped.is_empty() {
                 regular_blocks.push(
@@ -187,14 +186,9 @@ pub fn TodayView<'a>(hooks: Hooks, props: &TodayViewProps<'a>) -> impl Into<AnyE
                     }
                     .into_any(),
                 );
-                first = false;
             }
 
             for (project_uuid, tasks) in &regular.by_project {
-                if !first {
-                    regular_blocks
-                        .push(element! { Text(content: "", wrap: TextWrap::NoWrap) }.into_any());
-                }
                 regular_blocks.push(
                     element! {
                         TaskGroup(
@@ -212,14 +206,9 @@ pub fn TodayView<'a>(hooks: Hooks, props: &TodayViewProps<'a>) -> impl Into<AnyE
                     }
                     .into_any(),
                 );
-                first = false;
             }
 
             for (area_uuid, area_group) in &regular.by_area {
-                if !first {
-                    regular_blocks
-                        .push(element! { Text(content: "", wrap: TextWrap::NoWrap) }.into_any());
-                }
                 regular_blocks.push(
                     element! {
                         TaskGroup(
@@ -237,11 +226,10 @@ pub fn TodayView<'a>(hooks: Hooks, props: &TodayViewProps<'a>) -> impl Into<AnyE
                     }
                     .into_any(),
                 );
-                first = false;
             }
 
             element! {
-                    View(flex_direction: FlexDirection::Column) {
+                    View(flex_direction: FlexDirection::Column, gap: 1) {
                         Text(
                             content: header_text(items),
                             wrap: TextWrap::NoWrap,
@@ -251,26 +239,21 @@ pub fn TodayView<'a>(hooks: Hooks, props: &TodayViewProps<'a>) -> impl Into<AnyE
 
                         #(if has_regular(items) {
                             Some(element! {
-                                View(flex_direction: FlexDirection::Column) {
-                                    Text(content: "", wrap: TextWrap::NoWrap)
-                                    View(flex_direction: FlexDirection::Column, padding_left: LIST_INDENT) {
-                                        #(regular_blocks)
-                                    }
+                                View(flex_direction: FlexDirection::Column, padding_left: LIST_INDENT, gap: 1) {
+                                    #(regular_blocks)
                                 }
                             })
                         } else { None })
 
                         #(if has_evening(items) {
                             Some(element! {
-                                View(flex_direction: FlexDirection::Column) {
-                                    Text(content: "", wrap: TextWrap::NoWrap)
+                                View(flex_direction: FlexDirection::Column, gap: 1) {
                                     Text(
                                         content: format!("{} This Evening", ICONS.evening),
                                         wrap: TextWrap::NoWrap,
                                         color: Color::Blue,
                                         weight: Weight::Bold,
                                     )
-                                    Text(content: "", wrap: TextWrap::NoWrap)
                                     View(flex_direction: FlexDirection::Column, padding_left: LIST_INDENT) {
                                         TaskList(
                                             items: evening,

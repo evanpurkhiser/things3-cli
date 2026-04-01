@@ -48,10 +48,7 @@ pub fn UpcomingView<'a>(hooks: Hooks, props: &UpcomingViewProps<'a>) -> impl Int
     };
 
     let mut sections: Vec<AnyElement<'a>> = Vec::new();
-    for (idx, (day, day_items)) in groups.into_iter().enumerate() {
-        if idx > 0 {
-            sections.push(element! { Text(content: "", wrap: TextWrap::NoWrap) }.into_any());
-        }
+    for (day, day_items) in groups.into_iter() {
         sections.push(
             element! {
                 View(flex_direction: FlexDirection::Column) {
@@ -66,15 +63,16 @@ pub fn UpcomingView<'a>(hooks: Hooks, props: &UpcomingViewProps<'a>) -> impl Int
     }
 
     element! {
-        View(flex_direction: FlexDirection::Column) {
+        View(flex_direction: FlexDirection::Column, gap: 1) {
             Text(
                 content: format!("{} Upcoming  ({} tasks)", ICONS.upcoming, items.len()),
                 wrap: TextWrap::NoWrap,
                 color: Color::Cyan,
                 weight: Weight::Bold,
             )
-            Text(content: "", wrap: TextWrap::NoWrap)
-            #(sections)
+            View(flex_direction: FlexDirection::Column, gap: 1) {
+                #(sections)
+            }
         }
     }
     .into_any()

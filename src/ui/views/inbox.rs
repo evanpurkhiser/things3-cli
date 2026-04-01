@@ -35,14 +35,13 @@ pub fn InboxView<'a>(hooks: Hooks, props: &InboxViewProps<'a>) -> impl Into<AnyE
             let prefix_len = id_prefix_len(store.as_ref(), items);
             let refs = items.iter().collect::<Vec<_>>();
             element! {
-                View(flex_direction: FlexDirection::Column) {
+                View(flex_direction: FlexDirection::Column, gap: 1) {
                     Text(
                         content: format!("{} Inbox  ({} tasks)", ICONS.inbox, items.len()),
                         wrap: TextWrap::NoWrap,
                         color: Color::Blue,
                         weight: Weight::Bold,
                     )
-                    Text(content: "", wrap: TextWrap::NoWrap)
                     View(flex_direction: FlexDirection::Column, padding_left: LIST_INDENT) {
                         TaskList(
                             items: refs,

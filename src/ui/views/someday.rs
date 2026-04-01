@@ -40,14 +40,13 @@ pub fn SomedayView<'a>(hooks: Hooks, props: &SomedayViewProps<'a>) -> impl Into<
     };
 
     element! {
-        View(flex_direction: FlexDirection::Column) {
+        View(flex_direction: FlexDirection::Column, gap: 1) {
             Text(
                 content: format!("{} Someday  ({} items)", ICONS.task_someday, items.len()),
                 wrap: TextWrap::NoWrap,
                 color: Color::Cyan,
                 weight: Weight::Bold,
             )
-            Text(content: "", wrap: TextWrap::NoWrap)
 
             #(if has_projects {
                 Some(element! {
@@ -55,10 +54,6 @@ pub fn SomedayView<'a>(hooks: Hooks, props: &SomedayViewProps<'a>) -> impl Into<
                         TaskList(items: projects.clone(), id_prefix_len, options)
                     }
                 })
-            } else { None })
-
-            #(if has_projects && has_tasks {
-                Some(element! { Text(content: "", wrap: TextWrap::NoWrap) })
             } else { None })
 
             #(if has_tasks {
