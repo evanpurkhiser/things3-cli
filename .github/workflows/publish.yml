@@ -139,6 +139,7 @@ jobs:
       - build_darwin
     permissions:
       contents: write
+      workflows: write
 
     steps:
       - name: Checkout
