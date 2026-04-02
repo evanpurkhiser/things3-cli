@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   bump:
-    name: Bump, tag, and dispatch release
+    name: Bump version
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
@@ -29,7 +29,7 @@ jobs:
         run: |
           SHA=$(git rev-parse origin/main)
           echo "Waiting for tests on ${SHA}..."
-          gh run list --workflow=main.yml --branch=main --commit "$SHA" --limit=1 --json databaseId --jq '.[0].databaseId' | xargs gh run watch --exit-status
+          gh run list --workflow=main.yml --branch=main --commit "$SHA" --limit=1 --json databaseId --jq '.[0].databaseId' | xargs gh run watch --exit-status --compact
 
       - name: Validate version input
         env:
@@ -83,7 +83,7 @@ jobs:
           git pull --rebase origin main
           git push origin HEAD:main "refs/tags/${TAG}"
 
-      - name: Dispatch Publish workflow for tag
+      - name: Dispatch publish workflow for tag
         env:
           VERSION: ${{ inputs.version }}
         run: |
