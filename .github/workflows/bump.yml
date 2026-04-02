@@ -27,10 +27,9 @@ jobs:
 
       - name: Ensure tests are passing on main
         run: |
-          gh run list --workflow=tests.yml --branch=main --limit=1 --json conclusion --jq '.[0].conclusion' | grep -q '^success$' || {
-            echo "Latest test run on main did not succeed"
-            exit 1
-          }
+          SHA=$(git rev-parse origin/main)
+          echo "Waiting for tests on ${SHA}..."
+          gh run list --workflow=tests.yml --branch=main --commit "$SHA" --limit=1 --json databaseId --jq '.[0].databaseId' | xargs gh run watch --exit-status
 
       - name: Validate version input
         env:
