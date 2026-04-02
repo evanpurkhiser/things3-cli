@@ -1,6 +1,6 @@
 # things3
 
-[![Tests](https://github.com/evanpurkhiser/things3-cloud/actions/workflows/tests.yml/badge.svg)](https://github.com/evanpurkhiser/things3-cloud/actions/workflows/tests.yml)
+[![Main](https://github.com/evanpurkhiser/things3-cloud/actions/workflows/main.yml/badge.svg)](https://github.com/evanpurkhiser/things3-cloud/actions/workflows/main.yml)
 
 A Rust command-line client for [Things 3](https://culturedcode.com/things/) that talks
 directly to the Things Cloud API.
