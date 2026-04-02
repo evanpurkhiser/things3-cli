@@ -255,7 +255,7 @@ jobs:
         run: cargo publish --locked --token "${{ steps.crates_io_auth.outputs.token }}"
 
   publish_homebrew:
-    name: Publish Homebrew formula
+    name: Publish homebrew
     needs:
       - publish_collect
       - release_meta
