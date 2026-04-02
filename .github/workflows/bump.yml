@@ -56,8 +56,7 @@ jobs:
       - name: Bump package version
         env:
           VERSION: ${{ inputs.version }}
-        run: |
-          cargo set-version "$VERSION"
+        run: cargo set-version "$VERSION"
 
       - name: Refresh lockfile metadata
         run: cargo metadata --format-version=1 > /dev/null
