@@ -194,3 +194,16 @@ jobs:
 
       - name: Publish to crates.io
         run: cargo publish --locked --token "${{ steps.crates_io_auth.outputs.token }}"
+
+  bump_homebrew:
+    name: Bump Homebrew formula
+    needs:
+      - release_meta
+      - publish_release
+    if: needs.release_meta.outputs.is_nightly == 'false'
+    uses: evanpurkhiser/workflows/.github/workflows/bump-homebrew.yml@main
+    with:
+      formula: things3-cloud
+      version: ${{ needs.release_meta.outputs.tag_name }}
+    secrets:
+      token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
