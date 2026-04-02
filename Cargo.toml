@@ -1,6 +1,6 @@
 [package]
 name = "things3-cloud"
-version = "0.6.1"
+version = "0.6.2"
 edition = "2024"
 autobins = false
 description = "Command-line client for Things 3 using the Things Cloud API"
