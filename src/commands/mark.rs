@@ -22,24 +22,27 @@ use crate::{
 pub struct MarkArgs {
     /// Task UUID(s) (or unique UUID prefixes)
     pub task_ids: Vec<IdentifierToken>,
-    #[arg(long, help = "Mark task(s) as completed")]
+    #[arg(long, short = 'd', help = "Mark task(s) as completed")]
     pub done: bool,
-    #[arg(long, help = "Mark task(s) as incomplete")]
+    #[arg(long, short = 'i', help = "Mark task(s) as incomplete")]
     pub incomplete: bool,
-    #[arg(long, help = "Mark task(s) as canceled")]
+    #[arg(long, short = 'c', help = "Mark task(s) as canceled")]
     pub canceled: bool,
     #[arg(
         long = "check",
+        short = 'k',
         help = "Mark checklist items done by comma-separated short IDs"
     )]
     pub check_ids: Option<String>,
     #[arg(
         long = "uncheck",
+        short = 'u',
         help = "Mark checklist items incomplete by comma-separated short IDs"
     )]
     pub uncheck_ids: Option<String>,
     #[arg(
         long = "check-cancel",
+        short = 'x',
         help = "Mark checklist items canceled by comma-separated short IDs"
     )]
     pub check_cancel_ids: Option<String>,

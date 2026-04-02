@@ -18,11 +18,15 @@ use crate::{
 pub struct ScheduleArgs {
     /// Task UUID (or unique UUID prefix)
     pub task_id: String,
-    #[arg(long, help = "When: anytime, today, evening, someday, or YYYY-MM-DD")]
+    #[arg(
+        long,
+        short = 'w',
+        help = "When: anytime, today, evening, someday, or YYYY-MM-DD"
+    )]
     pub when: Option<String>,
-    #[arg(long = "deadline", help = "Deadline date (YYYY-MM-DD)")]
+    #[arg(long = "deadline", short = 'd', help = "Deadline date (YYYY-MM-DD)")]
     pub deadline_date: Option<String>,
-    #[arg(long = "clear-deadline", help = "Clear deadline")]
+    #[arg(long = "clear-deadline", short = 'D', help = "Clear deadline")]
     pub clear_deadline: bool,
 }
 

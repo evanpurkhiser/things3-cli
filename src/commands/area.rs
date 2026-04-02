@@ -18,10 +18,10 @@ pub struct AreaArgs {
     /// Area UUID (or unique UUID prefix)
     pub area_id: String,
     /// Show notes beneath each task/project
-    #[arg(long)]
+    #[arg(long, short = 'd')]
     pub detailed: bool,
     /// Include completed and canceled items
-    #[arg(long)]
+    #[arg(long, short = 'a')]
     pub all: bool,
 }
 

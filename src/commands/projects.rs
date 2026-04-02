@@ -8,14 +8,7 @@ use crate::{
     app::Cli,
     commands::{Command, TagDeltaArgs},
     common::{
-        DIM,
-        GREEN,
-        ICONS,
-        colored,
-        day_to_timestamp,
-        parse_day,
-        resolve_tag_ids,
-        task6_note,
+        DIM, GREEN, ICONS, colored, day_to_timestamp, parse_day, resolve_tag_ids, task6_note,
     },
     ids::ThingsId,
     ui::{
@@ -43,7 +36,7 @@ pub enum ProjectsSubcommand {
 #[command(about = "Show, create, or edit projects")]
 pub struct ProjectsArgs {
     /// Show notes for each project.
-    #[arg(long)]
+    #[arg(long, short = 'd')]
     pub detailed: bool,
     #[command(subcommand)]
     pub command: Option<ProjectsSubcommand>,
@@ -52,7 +45,7 @@ pub struct ProjectsArgs {
 #[derive(Debug, Default, Args)]
 pub struct ProjectsListArgs {
     /// Show notes for each task
-    #[arg(long)]
+    #[arg(long, short = 'd')]
     pub detailed: bool,
 }
 
@@ -60,18 +53,23 @@ pub struct ProjectsListArgs {
 pub struct ProjectsNewArgs {
     /// Project title
     pub title: String,
-    #[arg(long, help = "Area UUID/prefix to place the project in")]
+    #[arg(long, short = 'a', help = "Area UUID/prefix to place the project in")]
     pub area: Option<String>,
     #[arg(
         long,
+        short = 'w',
         help = "Schedule: anytime (default), someday, today, or YYYY-MM-DD"
     )]
     pub when: Option<String>,
-    #[arg(long, default_value = "", help = "Project notes")]
+    #[arg(long, short = 'n', default_value = "", help = "Project notes")]
     pub notes: String,
-    #[arg(long, help = "Comma-separated tags (titles or UUID prefixes)")]
+    #[arg(
+        long,
+        short = 't',
+        help = "Comma-separated tags (titles or UUID prefixes)"
+    )]
     pub tags: Option<String>,
-    #[arg(long = "deadline", help = "Deadline date (YYYY-MM-DD)")]
+    #[arg(long = "deadline", short = 'd', help = "Deadline date (YYYY-MM-DD)")]
     pub deadline_date: Option<String>,
 }
 
@@ -79,11 +77,11 @@ pub struct ProjectsNewArgs {
 pub struct ProjectsEditArgs {
     /// Project UUID (or unique UUID prefix)
     pub project_id: String,
-    #[arg(long, help = "Replace title")]
+    #[arg(long, short = 't', help = "Replace title")]
     pub title: Option<String>,
-    #[arg(long = "move", help = "Move to clear or area UUID/prefix")]
+    #[arg(long = "move", short = 'm', help = "Move to clear or area UUID/prefix")]
     pub move_target: Option<String>,
-    #[arg(long, help = "Replace notes (use empty string to clear)")]
+    #[arg(long, short = 'n', help = "Replace notes (use empty string to clear)")]
     pub notes: Option<String>,
     #[command(flatten)]
     pub tag_delta: TagDeltaArgs,

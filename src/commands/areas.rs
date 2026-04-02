@@ -40,7 +40,11 @@ pub struct AreasListArgs {}
 pub struct AreasNewArgs {
     /// Area title
     pub title: String,
-    #[arg(long, help = "Comma-separated tags (titles or UUID prefixes)")]
+    #[arg(
+        long,
+        short = 't',
+        help = "Comma-separated tags (titles or UUID prefixes)"
+    )]
     pub tags: Option<String>,
 }
 
@@ -48,7 +52,7 @@ pub struct AreasNewArgs {
 pub struct AreasEditArgs {
     /// Area UUID (or unique UUID prefix)
     pub area_id: String,
-    #[arg(long, help = "Replace title")]
+    #[arg(long, short = 't', help = "Replace title")]
     pub title: Option<String>,
     #[command(flatten)]
     pub tag_delta: TagDeltaArgs,

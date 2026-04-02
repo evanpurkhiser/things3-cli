@@ -19,9 +19,9 @@ use crate::{
 pub struct ReorderArgs {
     /// Item UUID (or unique UUID prefix)
     pub item_id: String,
-    #[arg(long, help = "Anchor item UUID/prefix to place before")]
+    #[arg(long, short = 'b', help = "Anchor item UUID/prefix to place before")]
     pub before_id: Option<String>,
-    #[arg(long, help = "Anchor item UUID/prefix to place after")]
+    #[arg(long, short = 'a', help = "Anchor item UUID/prefix to place after")]
     pub after_id: Option<String>,
 }
 

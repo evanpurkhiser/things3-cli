@@ -69,69 +69,85 @@ pub struct FindArgs {
     pub detailed: DetailedArgs,
     #[arg(help = "Case-insensitive substring to match against task title")]
     pub query: Option<String>,
-    #[arg(long, help = "Only incomplete tasks (default)")]
+    #[arg(long, short = 'i', help = "Only incomplete tasks (default)")]
     pub incomplete: bool,
-    #[arg(long, help = "Also search query against note text")]
+    #[arg(long, short = 'n', help = "Also search query against note text")]
     pub notes: bool,
     #[arg(
         long,
+        short = 'k',
         help = "Also search query against checklist item titles; implies --detailed for checklist-only matches"
     )]
     pub checklists: bool,
-    #[arg(long, help = "Only completed tasks")]
+    #[arg(long, short = 'c', help = "Only completed tasks")]
     pub completed: bool,
-    #[arg(long, help = "Only canceled tasks")]
+    #[arg(long, short = 'x', help = "Only canceled tasks")]
     pub canceled: bool,
-    #[arg(long = "any-status", help = "Match tasks regardless of status")]
+    #[arg(
+        long = "any-status",
+        short = 'A',
+        help = "Match tasks regardless of status"
+    )]
     pub any_status: bool,
     #[arg(
         long = "tag",
+        short = 't',
         value_name = "TAG",
         help = "Has this tag (title or UUID prefix); repeatable, OR logic"
     )]
     tag_filters: Vec<IdentifierToken>,
     #[arg(
         long = "project",
+        short = 'p',
         value_name = "PROJECT",
         help = "In this project (title substring or UUID prefix); repeatable, OR logic"
     )]
     project_filters: Vec<IdentifierToken>,
     #[arg(
         long = "area",
+        short = 'a',
         value_name = "AREA",
         help = "In this area (title substring or UUID prefix); repeatable, OR logic"
     )]
     area_filters: Vec<IdentifierToken>,
-    #[arg(long, help = "In Inbox view")]
+    #[arg(long, short = 'I', help = "In Inbox view")]
     pub inbox: bool,
-    #[arg(long, help = "In Today view")]
+    #[arg(long, short = 'T', help = "In Today view")]
     pub today: bool,
-    #[arg(long, help = "In Someday")]
+    #[arg(long, short = 's', help = "In Someday")]
     pub someday: bool,
-    #[arg(long, help = "Evening flag set")]
+    #[arg(long, short = 'e', help = "Evening flag set")]
     pub evening: bool,
-    #[arg(long = "has-deadline", help = "Has any deadline set")]
+    #[arg(long = "has-deadline", short = 'H', help = "Has any deadline set")]
     pub has_deadline: bool,
-    #[arg(long = "no-deadline", help = "No deadline set")]
+    #[arg(long = "no-deadline", short = 'N', help = "No deadline set")]
     pub no_deadline: bool,
-    #[arg(long, help = "Only recurring tasks")]
+    #[arg(long, short = 'r', help = "Only recurring tasks")]
     pub recurring: bool,
     #[arg(
         long,
+        short = 'l',
         value_name = "EXPR",
         help = "Deadline filter, e.g. '<today' or '>=2026-04-01' (repeatable for range)"
     )]
     pub deadline: Vec<String>,
     #[arg(
         long,
+        short = 'S',
         value_name = "EXPR",
         help = "Scheduled start date filter (repeatable)"
     )]
     pub scheduled: Vec<String>,
-    #[arg(long, value_name = "EXPR", help = "Creation date filter (repeatable)")]
+    #[arg(
+        long,
+        short = 'C',
+        value_name = "EXPR",
+        help = "Creation date filter (repeatable)"
+    )]
     pub created: Vec<String>,
     #[arg(
         long = "completed-on",
+        short = 'o',
         value_name = "EXPR",
         help = "Completion date filter; implies --completed (repeatable)"
     )]

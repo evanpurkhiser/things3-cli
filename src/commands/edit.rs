@@ -22,15 +22,17 @@ use crate::{
 pub struct EditArgs {
     #[arg(help = "Task UUID(s) (or unique UUID prefixes)")]
     pub task_ids: Vec<IdentifierToken>,
-    #[arg(long, help = "Replace title (single task only)")]
+    #[arg(long, short = 't', help = "Replace title (single task only)")]
     pub title: Option<String>,
     #[arg(
         long,
+        short = 'n',
         help = "Replace notes (single task only; use empty string to clear)"
     )]
     pub notes: Option<String>,
     #[arg(
         long = "move",
+        short = 'm',
         help = "Move to Inbox, clear, project UUID/prefix, or area UUID/prefix"
     )]
     pub move_target: Option<String>,
@@ -38,18 +40,21 @@ pub struct EditArgs {
     pub tag_delta: TagDeltaArgs,
     #[arg(
         long = "add-checklist",
+        short = 'c',
         value_name = "TITLE",
         help = "Add a checklist item (repeatable, single task only)"
     )]
     pub add_checklist: Vec<String>,
     #[arg(
         long = "remove-checklist",
+        short = 'x',
         value_name = "IDS",
         help = "Remove checklist items by comma-separated short IDs (single task only)"
     )]
     pub remove_checklist: Option<String>,
     #[arg(
         long = "rename-checklist",
+        short = 'k',
         value_name = "ID:TITLE",
         help = "Rename a checklist item: short-id:new title (repeatable, single task only)"
     )]

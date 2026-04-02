@@ -42,7 +42,7 @@ pub struct TagsListArgs {}
 pub struct TagsNewArgs {
     /// Tag title
     pub name: String,
-    #[arg(long, help = "Parent tag title or UUID/prefix")]
+    #[arg(long, short = 'p', help = "Parent tag title or UUID/prefix")]
     pub parent: Option<String>,
 }
 
@@ -50,9 +50,9 @@ pub struct TagsNewArgs {
 pub struct TagsEditArgs {
     /// Tag title or UUID/prefix
     pub tag_id: String,
-    #[arg(long, help = "Replace tag title")]
+    #[arg(long, short = 'n', help = "Replace tag title")]
     pub name: Option<String>,
-    #[arg(long = "move", help = "Move under another tag or clear")]
+    #[arg(long = "move", short = 'm', help = "Move under another tag or clear")]
     pub move_target: Option<String>,
 }
 

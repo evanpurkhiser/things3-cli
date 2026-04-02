@@ -9,14 +9,7 @@ use crate::{
     app::Cli,
     commands::Command,
     common::{
-        DIM,
-        GREEN,
-        ICONS,
-        colored,
-        day_to_timestamp,
-        parse_day,
-        resolve_tag_ids,
-        task6_note,
+        DIM, GREEN, ICONS, colored, day_to_timestamp, parse_day, resolve_tag_ids, task6_note,
     },
     store::Task,
     wire::{
@@ -32,24 +25,38 @@ pub struct NewArgs {
     pub title: String,
     #[arg(
         long = "in",
+        short = 'i',
         default_value = "inbox",
         help = "Container: inbox, clear, project UUID/prefix, or area UUID/prefix"
     )]
     pub in_target: String,
     #[arg(
         long,
+        short = 'w',
         help = "Schedule: anytime, someday, today, evening, or YYYY-MM-DD"
     )]
     pub when: Option<String>,
-    #[arg(long = "before", help = "Insert before this sibling task UUID/prefix")]
+    #[arg(
+        long = "before",
+        short = 'b',
+        help = "Insert before this sibling task UUID/prefix"
+    )]
     pub before_id: Option<String>,
-    #[arg(long = "after", help = "Insert after this sibling task UUID/prefix")]
+    #[arg(
+        long = "after",
+        short = 'a',
+        help = "Insert after this sibling task UUID/prefix"
+    )]
     pub after_id: Option<String>,
-    #[arg(long, default_value = "", help = "Task notes")]
+    #[arg(long, short = 'n', default_value = "", help = "Task notes")]
     pub notes: String,
-    #[arg(long, help = "Comma-separated tags (titles or UUID prefixes)")]
+    #[arg(
+        long,
+        short = 't',
+        help = "Comma-separated tags (titles or UUID prefixes)"
+    )]
     pub tags: Option<String>,
-    #[arg(long = "deadline", help = "Deadline date (YYYY-MM-DD)")]
+    #[arg(long = "deadline", short = 'd', help = "Deadline date (YYYY-MM-DD)")]
     pub deadline_date: Option<String>,
 }
 

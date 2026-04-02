@@ -44,7 +44,7 @@ pub trait Command {
 #[derive(Debug, Default, Clone, Args)]
 pub struct DetailedArgs {
     /// Show notes beneath each task
-    #[arg(long)]
+    #[arg(long, short = 'd')]
     pub detailed: bool,
 }
 
@@ -52,11 +52,13 @@ pub struct DetailedArgs {
 pub struct TagDeltaArgs {
     #[arg(
         long = "add-tags",
+        short = 'a',
         help = "Comma-separated tags to add (titles or UUID prefixes)"
     )]
     pub add_tags: Option<String>,
     #[arg(
         long = "remove-tags",
+        short = 'r',
         help = "Comma-separated tags to remove (titles or UUID prefixes)"
     )]
     pub remove_tags: Option<String>,

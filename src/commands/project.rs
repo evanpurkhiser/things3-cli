@@ -19,7 +19,7 @@ pub struct ProjectArgs {
     /// Project UUID (or unique UUID prefix)
     pub project_id: String,
     /// Show notes beneath each task
-    #[arg(long)]
+    #[arg(long, short = 'd')]
     pub detailed: bool,
 }
 
