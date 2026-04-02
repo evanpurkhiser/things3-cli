@@ -23,6 +23,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Ensure tests are passing on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run list --workflow=tests.yml --branch=main --limit=1 --json conclusion --jq '.[0].conclusion' | grep -q '^success$' || {
+            echo "Latest test run on main did not succeed"
+            exit 1
+          }
+
       - name: Validate version input
         env:
           VERSION: ${{ inputs.version }}
