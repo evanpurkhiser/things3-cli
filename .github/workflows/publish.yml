@@ -3,8 +3,6 @@ name: Publish
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
     tags:
       - "v*"
   schedule:
@@ -139,7 +137,6 @@ jobs:
       - build_darwin
     permissions:
       contents: write
-      workflows: write
 
     steps:
       - name: Checkout
