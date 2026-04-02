@@ -1,4 +1,4 @@
-name: Build, Test, Release, Publish
+name: Main
 
 on:
   push:
