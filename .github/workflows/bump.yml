@@ -88,4 +88,4 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           TAG="v${VERSION}"
-          gh workflow run "Build, Test, Release, Publish" --ref "${TAG}"
+          gh workflow run main.yml --ref "${TAG}"
