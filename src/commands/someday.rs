@@ -6,8 +6,11 @@ use iocraft::prelude::*;
 
 use crate::{
     app::Cli,
-    commands::{Command, DetailedArgs},
-    ui::{render_element_to_string, views::someday::SomedayView},
+    commands::{Command, DetailedArgs, detailed_json_conflict, write_json},
+    ui::{
+        render_element_to_string,
+        views::{json::common::build_tasks_json, someday::SomedayView},
+    },
 };
 
 #[derive(Debug, Default, Args)]
@@ -26,6 +29,15 @@ impl Command for SomedayArgs {
         let store = Arc::new(cli.load_store()?);
         let today = ctx.today();
         let items = store.someday();
+
+        let json = cli.json;
+        if json {
+            if detailed_json_conflict(json, self.detailed.detailed) {
+                return Ok(());
+            }
+            write_json(out, &build_tasks_json(&items, &store, &today))?;
+            return Ok(());
+        }
 
         let mut ui = element! {
             ContextProvider(value: Context::owned(store.clone())) {

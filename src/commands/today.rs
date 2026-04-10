@@ -6,8 +6,11 @@ use iocraft::prelude::*;
 
 use crate::{
     app::Cli,
-    commands::{Command, DetailedArgs},
-    ui::{render_element_to_string, views::today::TodayView},
+    commands::{Command, DetailedArgs, detailed_json_conflict, write_json},
+    ui::{
+        render_element_to_string,
+        views::{json::today::TodayJsonView, today::TodayView},
+    },
     wire::task::TaskStatus,
 };
 
@@ -46,6 +49,15 @@ impl Command for TodayArgs {
                 std::cmp::Reverse(task.index),
             )
         });
+
+        let json = cli.json;
+        if json {
+            if detailed_json_conflict(json, self.detailed.detailed) {
+                return Ok(());
+            }
+            write_json(out, &TodayJsonView::build(&today_items, &store, &today))?;
+            return Ok(());
+        }
 
         let mut ui = element! {
             ContextProvider(value: Context::owned(store.clone())) {

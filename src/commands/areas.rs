@@ -7,9 +7,12 @@ use serde_json::json;
 
 use crate::{
     app::Cli,
-    commands::{Command, TagDeltaArgs},
+    commands::{Command, TagDeltaArgs, write_json},
     common::{DIM, GREEN, ICONS, colored, resolve_tag_ids},
-    ui::{render_element_to_string, views::areas::AreasView},
+    ui::{
+        render_element_to_string,
+        views::{areas::AreasView, json::common::build_area_json},
+    },
     wire::{
         area::{AreaPatch, AreaProps},
         wire_object::{EntityType, WireObject},
@@ -140,6 +143,16 @@ impl Command for AreasArgs {
             AreasSubcommand::List(_) => {
                 let store = Arc::new(cli.load_store()?);
                 let areas = store.areas();
+
+                if cli.json {
+                    let payload = areas
+                        .iter()
+                        .map(|area| build_area_json(area, &store))
+                        .collect::<Vec<_>>();
+                    write_json(out, &payload)?;
+                    return Ok(());
+                }
+
                 let id_prefix_len = store.unique_prefix_length(
                     &areas.iter().map(|a| a.uuid.clone()).collect::<Vec<_>>(),
                 );

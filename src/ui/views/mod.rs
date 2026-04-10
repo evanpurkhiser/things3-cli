@@ -3,6 +3,7 @@ pub mod area;
 pub mod areas;
 pub mod find;
 pub mod inbox;
+pub mod json;
 pub mod logbook;
 pub mod project;
 pub mod projects;

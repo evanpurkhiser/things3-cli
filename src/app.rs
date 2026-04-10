@@ -29,6 +29,9 @@ pub struct Cli {
     /// Disable color output
     #[arg(long)]
     pub no_color: bool,
+    /// Output JSON when supported by the selected command
+    #[arg(long, global = true)]
+    pub json: bool,
     /// Skip cloud sync and use local cache only
     #[arg(long)]
     pub no_sync: bool,

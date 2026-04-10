@@ -6,9 +6,12 @@ use iocraft::prelude::*;
 
 use crate::{
     app::Cli,
-    commands::{Command, DetailedArgs},
+    commands::{Command, DetailedArgs, detailed_json_conflict, write_json},
     common::parse_day,
-    ui::{render_element_to_string, views::logbook::LogbookView},
+    ui::{
+        render_element_to_string,
+        views::{json::common::build_tasks_json, logbook::LogbookView},
+    },
 };
 
 #[derive(Debug, Default, Args)]
@@ -52,6 +55,16 @@ impl Command for LogbookArgs {
         }
 
         let tasks = store.logbook(from_day, to_day);
+
+        let json = cli.json;
+        if json {
+            if detailed_json_conflict(json, self.detailed.detailed) {
+                return Ok(());
+            }
+            write_json(out, &build_tasks_json(&tasks, &store, &today))?;
+            return Ok(());
+        }
+
         let mut ui = element! {
             ContextProvider(value: Context::owned(store.clone())) {
                 ContextProvider(value: Context::owned(today)) {

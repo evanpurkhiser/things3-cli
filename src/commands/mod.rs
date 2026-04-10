@@ -21,6 +21,7 @@ pub mod upcoming;
 
 use anyhow::Result;
 use clap::{Args, Subcommand};
+use serde::Serialize;
 
 use crate::{
     app::Cli,
@@ -39,6 +40,21 @@ pub trait Command {
         let mut ctx = DefaultCmdCtx::from_cli(cli);
         self.run_with_ctx(cli, out, &mut ctx)
     }
+}
+
+pub(crate) fn detailed_json_conflict(json: bool, detailed: bool) -> bool {
+    if json && detailed {
+        eprintln!("--detailed is not supported with --json.");
+        true
+    } else {
+        false
+    }
+}
+
+pub(crate) fn write_json<T: Serialize>(out: &mut dyn std::io::Write, value: &T) -> Result<()> {
+    serde_json::to_writer_pretty(&mut *out, value)?;
+    writeln!(out)?;
+    Ok(())
 }
 
 #[derive(Debug, Default, Clone, Args)]

@@ -6,14 +6,24 @@ use iocraft::prelude::*;
 
 use crate::{
     app::Cli,
-    commands::{Command, TagDeltaArgs},
+    commands::{Command, TagDeltaArgs, detailed_json_conflict, write_json},
     common::{
-        DIM, GREEN, ICONS, colored, day_to_timestamp, parse_day, resolve_tag_ids, task6_note,
+        DIM,
+        GREEN,
+        ICONS,
+        colored,
+        day_to_timestamp,
+        parse_day,
+        resolve_tag_ids,
+        task6_note,
     },
     ids::ThingsId,
     ui::{
         render_element_to_string,
-        views::projects::{ProjectsAreaGroup, ProjectsView},
+        views::{
+            json::common::build_tasks_json,
+            projects::{ProjectsAreaGroup, ProjectsView},
+        },
     },
     wire::{
         notes::{StructuredTaskNotes, TaskNotes},
@@ -229,11 +239,24 @@ impl Command for ProjectsArgs {
             Some(ProjectsSubcommand::List(la)) => la.detailed,
             _ => false,
         };
+        let effective_json = match self.command.as_ref() {
+            None | Some(ProjectsSubcommand::List(_)) => cli.json,
+            _ => false,
+        };
 
         match &self.command {
             None | Some(ProjectsSubcommand::List(_)) => {
                 let store = Arc::new(cli.load_store()?);
+                let today = ctx.today();
                 let projects = store.projects(Some(TaskStatus::Incomplete));
+
+                if effective_json {
+                    if detailed_json_conflict(effective_json, effective_detailed) {
+                        return Ok(());
+                    }
+                    write_json(out, &build_tasks_json(&projects, &store, &today))?;
+                    return Ok(());
+                }
 
                 let mut by_area: BTreeMap<Option<ThingsId>, Vec<_>> = BTreeMap::new();
                 for p in &projects {
@@ -269,9 +292,9 @@ impl Command for ProjectsArgs {
                     .collect::<Vec<_>>();
 
                 let mut ui = element! {
-                    ContextProvider(value: Context::owned(store.clone())) {
-                        ContextProvider(value: Context::owned(ctx.today())) {
-                            ProjectsView(
+                        ContextProvider(value: Context::owned(store.clone())) {
+                            ContextProvider(value: Context::owned(today)) {
+                                ProjectsView(
                                 projects_count: projects.len(),
                                 no_area_projects: no_area,
                                 area_groups,

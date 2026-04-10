@@ -6,9 +6,12 @@ use iocraft::prelude::*;
 
 use crate::{
     app::Cli,
-    commands::Command,
+    commands::{Command, write_json},
     common::{DIM, GREEN, ICONS, colored, resolve_single_tag},
-    ui::{render_element_to_string, views::tags::TagsView},
+    ui::{
+        render_element_to_string,
+        views::{json::common::build_tags_json, tags::TagsView},
+    },
     wire::{
         tags::{TagPatch, TagProps},
         wire_object::{EntityType, WireObject},
@@ -137,6 +140,11 @@ impl Command for TagsArgs {
             TagsSubcommand::List(_) => {
                 let store = cli.load_store()?;
                 let tags = store.tags();
+
+                if cli.json {
+                    write_json(out, &build_tags_json(&tags, &store))?;
+                    return Ok(());
+                }
 
                 let by_uuid: HashMap<_, _> =
                     tags.iter().map(|t| (t.uuid.clone(), t.clone())).collect();

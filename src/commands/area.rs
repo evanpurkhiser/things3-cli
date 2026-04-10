@@ -6,9 +6,12 @@ use iocraft::prelude::*;
 
 use crate::{
     app::Cli,
-    commands::Command,
+    commands::{Command, detailed_json_conflict, write_json},
     common::ICONS,
-    ui::{render_element_to_string, views::area::AreaView},
+    ui::{
+        render_element_to_string,
+        views::{area::AreaView, json::common::build_tasks_json},
+    },
     wire::task::TaskStatus,
 };
 
@@ -68,6 +71,23 @@ impl Command for AreaArgs {
             })
             .collect::<Vec<_>>();
         loose_tasks.sort_by_key(|t| t.index);
+
+        let json = cli.json;
+        if json {
+            if detailed_json_conflict(json, self.detailed) {
+                return Ok(());
+            }
+
+            let mut items = projects;
+            items.extend(loose_tasks);
+            items.sort_by(|a, b| {
+                let a_proj = if a.is_project() { 0 } else { 1 };
+                let b_proj = if b.is_project() { 0 } else { 1 };
+                (a_proj, a.index, &a.uuid).cmp(&(b_proj, b.index, &b.uuid))
+            });
+            write_json(out, &build_tasks_json(&items, &store, &today))?;
+            return Ok(());
+        }
 
         let mut ui = element! {
             ContextProvider(value: Context::owned(store.clone())) {

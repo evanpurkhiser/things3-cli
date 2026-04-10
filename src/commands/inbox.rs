@@ -6,8 +6,11 @@ use iocraft::prelude::*;
 
 use crate::{
     app::Cli,
-    commands::{Command, DetailedArgs},
-    ui::{render_element_to_string, views::inbox::InboxView},
+    commands::{Command, DetailedArgs, detailed_json_conflict, write_json},
+    ui::{
+        render_element_to_string,
+        views::{inbox::InboxView, json::common::build_tasks_json},
+    },
 };
 
 #[derive(Debug, Default, Args)]
@@ -26,6 +29,15 @@ impl Command for InboxArgs {
         let store = Arc::new(cli.load_store()?);
         let today = ctx.today();
         let tasks = store.inbox();
+
+        let json = cli.json;
+        if json {
+            if detailed_json_conflict(json, self.detailed.detailed) {
+                return Ok(());
+            }
+            write_json(out, &build_tasks_json(&tasks, &store, &today))?;
+            return Ok(());
+        }
 
         let mut ui = element! {
             ContextProvider(value: Context::owned(store.clone())) {

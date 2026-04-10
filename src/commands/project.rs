@@ -6,10 +6,13 @@ use iocraft::prelude::*;
 
 use crate::{
     app::Cli,
-    commands::Command,
+    commands::{Command, detailed_json_conflict, write_json},
     ui::{
         render_element_to_string,
-        views::project::{ProjectHeadingGroup, ProjectView},
+        views::{
+            json::common::build_tasks_json,
+            project::{ProjectHeadingGroup, ProjectView},
+        },
     },
 };
 
@@ -51,6 +54,18 @@ impl Command for ProjectArgs {
             .into_iter()
             .filter(|t| store.effective_project_uuid(t).as_ref() == Some(&project.uuid))
             .collect::<Vec<_>>();
+
+        let json = cli.json;
+        if json {
+            if detailed_json_conflict(json, self.detailed) {
+                return Ok(());
+            }
+
+            let mut sorted_children = children.clone();
+            sorted_children.sort_by_key(|t| t.index);
+            write_json(out, &build_tasks_json(&sorted_children, &store, &today))?;
+            return Ok(());
+        }
 
         let headings = store
             .tasks_by_uuid

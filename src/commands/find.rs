@@ -8,13 +8,16 @@ use iocraft::prelude::*;
 use crate::{
     app::Cli,
     arg_types::IdentifierToken,
-    commands::{Command, DetailedArgs},
+    commands::{Command, DetailedArgs, detailed_json_conflict, write_json},
     common::resolve_single_tag,
     ids::ThingsId,
     store::{Task, ThingsStore},
     ui::{
         render_element_to_string,
-        views::find::{FindRow, FindView},
+        views::{
+            find::{FindRow, FindView},
+            json::common::build_tasks_json,
+        },
     },
     wire::task::{TaskStart, TaskStatus},
 };
@@ -208,6 +211,19 @@ impl Command for FindArgs {
             let b_proj = if b.is_project() { 0 } else { 1 };
             (a_proj, a.index, &a.uuid).cmp(&(b_proj, b.index, &b.uuid))
         });
+
+        let json = cli.json;
+        if json {
+            if detailed_json_conflict(json, self.detailed.detailed) {
+                return Ok(());
+            }
+            let tasks = matched
+                .iter()
+                .map(|(task, _)| task.clone())
+                .collect::<Vec<_>>();
+            write_json(out, &build_tasks_json(&tasks, &store, &today))?;
+            return Ok(());
+        }
 
         let rows = matched
             .iter()

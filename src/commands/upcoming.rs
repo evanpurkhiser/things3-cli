@@ -6,8 +6,11 @@ use iocraft::prelude::*;
 
 use crate::{
     app::Cli,
-    commands::{Command, DetailedArgs},
-    ui::{render_element_to_string, views::upcoming::UpcomingView},
+    commands::{Command, DetailedArgs, detailed_json_conflict, write_json},
+    ui::{
+        render_element_to_string,
+        views::{json::common::build_tasks_json, upcoming::UpcomingView},
+    },
     wire::task::TaskStatus,
 };
 
@@ -41,6 +44,15 @@ impl Command for UpcomingArgs {
             }
         }
         tasks.sort_by_key(|t| t.start_date);
+
+        let json = cli.json;
+        if json {
+            if detailed_json_conflict(json, self.detailed.detailed) {
+                return Ok(());
+            }
+            write_json(out, &build_tasks_json(&tasks, &store, &today))?;
+            return Ok(());
+        }
 
         let mut ui = element! {
             ContextProvider(value: Context::owned(store.clone())) {
