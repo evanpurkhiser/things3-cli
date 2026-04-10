@@ -37,6 +37,15 @@ cargo build
 things3 set-auth
 ```
 
+You can also set credentials via environment variables:
+
+```bash
+export THINGS3_EMAIL="you@example.com"
+export THINGS3_PASSWORD="your-password"
+```
+
+Environment variables override values in the auth file.
+
 ## Usage
 
 ```bash

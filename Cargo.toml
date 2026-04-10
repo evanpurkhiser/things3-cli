@@ -23,6 +23,7 @@ chrono = { version = "0.4", features = ["clock"] }
 console = "0.15"
 crc32fast = "1.5"
 dirs = "6.0"
+figment = { version = "0.10", features = ["env", "json"] }
 num_enum = "0.7"
 rand = "0.10"
 reqwest = { version = "0.13", default-features = false, features = ["blocking", "json", "rustls"] }

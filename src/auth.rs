@@ -1,6 +1,10 @@
 use std::fs;
 
 use anyhow::{Context, Result, anyhow};
+use figment::{
+    Figment,
+    providers::{Env, Format, Json},
+};
 use serde::{Deserialize, Serialize};
 
 use crate::dirs::auth_file_path;
@@ -9,6 +13,23 @@ use crate::dirs::auth_file_path;
 struct AuthPayload {
     email: String,
     password: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct AuthConfig {
+    email: Option<String>,
+    password: Option<String>,
+}
+
+fn load_auth_config(path: &std::path::Path) -> Result<AuthConfig> {
+    let mut figment = Figment::new();
+    if path.exists() {
+        figment = figment.merge(Json::file(path));
+    }
+    figment
+        .merge(Env::prefixed("THINGS3_"))
+        .extract()
+        .with_context(|| format!("Failed reading auth config at {}", path.display()))
 }
 
 fn validate_auth(email: &str, password: &str) -> Result<(String, String)> {
@@ -27,19 +48,24 @@ fn validate_auth(email: &str, password: &str) -> Result<(String, String)> {
 
 pub fn load_auth() -> Result<(String, String)> {
     let path = auth_file_path();
-    if !path.exists() {
+
+    let cfg = load_auth_config(&path)?;
+
+    let Some(email) = cfg.email else {
         return Err(anyhow!(
-            "Auth not configured. Run `things3 set-auth` to create {}.",
+            "Missing auth email. Set THINGS3_EMAIL or run `things3 set-auth` to create {}.",
             path.display()
         ));
-    }
+    };
 
-    let raw = fs::read_to_string(&path)
-        .with_context(|| format!("Failed reading auth config at {}", path.display()))?;
-    let payload: AuthPayload = serde_json::from_str(&raw)
-        .with_context(|| format!("Failed reading auth config at {}", path.display()))?;
+    let Some(password) = cfg.password else {
+        return Err(anyhow!(
+            "Missing auth password. Set THINGS3_PASSWORD or run `things3 set-auth` to update {}.",
+            path.display()
+        ));
+    };
 
-    validate_auth(&payload.email, &payload.password)
+    validate_auth(&email, &password)
 }
 
 pub fn write_auth(email: &str, password: &str) -> Result<std::path::PathBuf> {
