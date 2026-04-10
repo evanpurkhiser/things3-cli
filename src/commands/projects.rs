@@ -8,7 +8,14 @@ use crate::{
     app::Cli,
     commands::{Command, TagDeltaArgs},
     common::{
-        DIM, GREEN, ICONS, colored, day_to_timestamp, parse_day, resolve_tag_ids, task6_note,
+        DIM,
+        GREEN,
+        ICONS,
+        colored,
+        day_to_timestamp,
+        parse_day,
+        resolve_tag_ids,
+        task6_note,
     },
     ids::ThingsId,
     ui::{
