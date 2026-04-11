@@ -1,6 +1,6 @@
 [package]
 name = "things3-cloud"
-version = "0.7.1"
+version = "0.7.2"
 edition = "2024"
 autobins = false
 description = "Command-line client for Things 3 using the Things Cloud API"
@@ -26,7 +26,8 @@ dirs = "6.0"
 figment = { version = "0.10", features = ["env", "json"] }
 num_enum = "0.7"
 rand = "0.10"
-reqwest = { version = "0.13", default-features = false, features = ["blocking", "json", "rustls"] }
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "json", "rustls-no-provider"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 rpassword = "7"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
