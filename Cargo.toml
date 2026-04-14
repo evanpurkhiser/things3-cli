@@ -37,6 +37,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 iocraft = "0.7.18"
 urlencoding = "2.1"
 uuid = { version = "1.22", features = ["v4"] }
+tiny_http = "0.12"
 
 [dev-dependencies]
 insta = "1.46"

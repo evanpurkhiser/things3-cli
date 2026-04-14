@@ -18,6 +18,7 @@ pub mod someday;
 pub mod tags;
 pub mod today;
 pub mod upcoming;
+pub mod webserver;
 
 use anyhow::Result;
 use clap::{Args, Subcommand};
@@ -122,6 +123,8 @@ pub enum Commands {
     Find(find::FindArgs),
     #[command(hide = true, about = "Generate shell completion scripts")]
     Completions(completions::CompletionsArgs),
+    #[command(hide = true, about = "Run internal HTTP bridge server")]
+    Webserver(webserver::WebserverArgs),
 }
 
 impl Command for Commands {
@@ -152,6 +155,7 @@ impl Command for Commands {
             Commands::SetAuth(args) => args.run_with_ctx(cli, out, ctx),
             Commands::Find(args) => args.run_with_ctx(cli, out, ctx),
             Commands::Completions(args) => args.run_with_ctx(cli, out, ctx),
+            Commands::Webserver(args) => args.run_with_ctx(cli, out, ctx),
         }
     }
 }
