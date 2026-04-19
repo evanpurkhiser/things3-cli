@@ -266,20 +266,14 @@ jobs:
       token: ${{ secrets.HOMEBREW_BUMP_DISPATCH_PAT }}
 
   publish_aur:
-    name: Publish AUR (${{ matrix.package }})
+    name: Publish AUR
     needs:
       - publish_collect
       - release_meta
     if: needs.release_meta.outputs.is_versioned == 'true'
-    strategy:
-      fail-fast: false
-      matrix:
-        package:
-          - things3-cloud
-          - things3-cloud-bin
     uses: evanpurkhiser/workflows/.github/workflows/bump-aur.yml@main
     with:
-      package: ${{ matrix.package }}
+      package: things3-cloud
       version: ${{ needs.release_meta.outputs.tag_name }}
     secrets:
       token: ${{ secrets.AUR_BUMP_DISPATCH_PAT }}
