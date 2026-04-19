@@ -212,10 +212,19 @@ pub fn fold_state_from_append_log(cache_dir: &Path) -> Result<RawState> {
             safe_offset = reader.stream_position()?;
             continue;
         }
-        let item: WireItem = serde_json::from_str(stripped)
-            .with_context(|| format!("Corrupt log entry at {}", log_path.display()))?;
-        fold_item(item, &mut state);
-        new_lines += 1;
+        match serde_json::from_str::<WireItem>(stripped) {
+            Ok(item) => {
+                fold_item(item, &mut state);
+                new_lines += 1;
+            }
+            Err(err) => {
+                eprintln!(
+                    "warning: skipping corrupt log entry at {}: {}",
+                    log_path.display(),
+                    err
+                );
+            }
+        }
         safe_offset = reader.stream_position()?;
     }
 
@@ -303,5 +312,29 @@ mod tests {
         let expected_offset = fs::metadata(&log_path).expect("log metadata").len();
         let (_, second_offset) = read_state_cache(cache_dir);
         assert_eq!(second_offset, expected_offset);
+    }
+
+    #[test]
+    fn fold_state_skips_unparseable_line_and_continues() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let cache_dir = temp_dir.path();
+        let log_path = cache_dir.join("things.log");
+
+        let good_before = r#"{"3C6BBD49-8D11-4FFF-8B0E-B8F33FA9C00A":{"t":0,"e":"Settings5","p":{}}}"#;
+        let corrupt = r#"{"ACTIONGROUP-DEADBEEF":{"e":"Task3","p":{"legacy":true}}}"#;
+        let good_after = r#"{"4C6BBD49-8D11-4FFF-8B0E-B8F33FA9C00B":{"t":0,"e":"Settings5","p":{}}}"#;
+
+        fs::write(
+            &log_path,
+            format!("{}\n{}\n{}\n", good_before, corrupt, good_after),
+        )
+        .expect("seed log");
+
+        let state = fold_state_from_append_log(cache_dir).expect("fold should not fail");
+        assert_eq!(state.len(), 2);
+
+        let expected_offset = fs::metadata(&log_path).expect("log metadata").len();
+        let (_, offset) = read_state_cache(cache_dir);
+        assert_eq!(offset, expected_offset);
     }
 }
