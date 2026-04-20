@@ -103,3 +103,22 @@ cargo test --all-targets
 ```
 
 The CLI snapshot suite uses `trycmd` test cases in `trycmd/`.
+
+## Related projects
+
+**Things Cloud API clients** (same approach as this project)
+
+- [wbopan/things-cloud-mcp](https://github.com/wbopan/things-cloud-mcp) (Go MCP server via Cloud API)
+- [arthursoares/things-cloud-sdk](https://github.com/arthursoares/things-cloud-sdk) (Go SDK for Things Cloud)
+
+**Local database / URL scheme clients** (read from local SQLite, write via URL scheme or AppleScript)
+
+- [ossianhempel/things3-cli](https://github.com/ossianhempel/things3-cli) (Go CLI, local database)
+- [thingsapi/things.py](https://github.com/thingsapi/things.py) (Python library, reads database)
+- [thingsapi/things-cli](https://github.com/thingsapi/things-cli) (Python CLI built on things.py)
+- [GarthDB/rust-things3](https://github.com/GarthDB/rust-things3) (Rust library and CLI with MCP)
+
+**MCP servers** (local, via AppleScript or URL scheme)
+
+- [drjforrest/mcp-things3](https://github.com/drjforrest/mcp-things3) (Python MCP, AppleScript + x-call)
+- [rossshannon/Things3-MCP](https://github.com/rossshannon/Things3-MCP) (Python MCP with read/write)
